@@ -116,6 +116,16 @@ export const LoginScreen = ({ navigation }: any) => {
           secureTextEntry
         />
 
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() || undefined })}
+          style={styles.forgotLink}
+          hitSlop={8}
+        >
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+            Forgot password?
+          </Text>
+        </TouchableOpacity>
+
         <AppButton
           title="Sign In"
           onPress={handleLogin}
@@ -192,6 +202,11 @@ const styles = StyleSheet.create({
   },
   form: {
     marginTop: 8,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 6,
   },
   loginBtn: {
     marginTop: 10,

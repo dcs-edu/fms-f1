@@ -229,7 +229,7 @@ export const PaymentsReportScreen = ({ navigation }: any) => {
               {rows.map((p) => (
                 <TouchableOpacity
                   key={p.txn_id}
-                  onPress={() => navigation.navigate('Receipt', { payment: p, studentId: p.student_id ?? p.admission_no })}
+                  onPress={() => navigation.navigate('Receipt', { payment: p, studentId: p.student_id })}
                   style={[styles.tr, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
                 >
                   <Text style={[styles.td, { width: COLUMNS[0].width, color: colors.textSecondary }]}>

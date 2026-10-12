@@ -12,6 +12,7 @@ import {
   CreateStudentRequest,
   LinkParentRequest,
   ChangePasswordRequest,
+  ResetPasswordRequest,
   UpdateRoleRequest,
   Utility,
   UtilityPrice,
@@ -19,6 +20,7 @@ import {
   UserRole,
   User,
   Bill,
+  StudentBills,
   StudentDebt,
   PaymentQuery,
 } from './types';
@@ -134,6 +136,21 @@ class ApiClient {
     });
   }
 
+  /** Emails an 8-digit reset code. Replies the same whether or not the email has an account. */
+  async forgotPassword(email: string): Promise<void> {
+    await this.request<void>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(data: ResetPasswordRequest): Promise<void> {
+    await this.request<void>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async changePassword(data: ChangePasswordRequest): Promise<void> {
     await this.request<void>('/account/password', {
       method: 'PATCH',
@@ -167,6 +184,15 @@ class ApiClient {
       `/payments/students/${encodeURIComponent(studentId)}?range=${range}`,
       { method: 'GET' }
     );
+  }
+
+  /** Every bill with what this student has paid on it and what is left. */
+  async getStudentBills(studentId: string): Promise<StudentBills> {
+    const data = await this.request<StudentBills>(
+      `/students/${encodeURIComponent(studentId)}/bills`,
+      { method: 'GET' }
+    );
+    return { ...data, bills: data.bills || [] };
   }
 
   // ==================== BURSAR & CASH ====================

@@ -1,4 +1,4 @@
-import { Bill, Payment, StudentDebt } from '../api/types';
+import { Bill, Payment, StudentBill, StudentDebt } from '../api/types';
 
 /** Money arrives as decimal strings or (for debts) float numbers; this reads either safely. */
 export function toNumber(v: string | number | null | undefined): number {
@@ -120,9 +120,39 @@ export function billLabel(bills: Map<number, Bill>, billId: number): string {
   return b ? `${b.util_name} · ${b.sem}` : `Bill #${billId}`;
 }
 
-/** Payer label for a payment row; falls back to the short admission number until the backend joins names in. */
+/** Payer label for a payment row: the student's name and ID once GET /payments joins them in. */
 export function payerLabel(p: Payment): string {
-  return p.student_name || p.student_id || `Adm. ${p.admission_no.slice(0, 8)}`;
+  if (p.student_name && p.student_id) return `${p.student_name} · ${p.student_id}`;
+  return p.student_name || (p.student_id ? `Student ${p.student_id}` : 'Student ID —');
+}
+
+export interface SemesterBills {
+  sem: string;
+  bills: StudentBill[];
+  totalPrice: number;
+  totalPaid: number;
+  totalRemaining: number;
+}
+
+/** Groups one student's bills by semester, keeping the backend's (sem, name) order. */
+export function groupBillsBySemester(bills: StudentBill[]): SemesterBills[] {
+  const bySem = new Map<string, SemesterBills>();
+  for (const b of bills) {
+    let entry = bySem.get(b.sem);
+    if (!entry) {
+      entry = { sem: b.sem, bills: [], totalPrice: 0, totalPaid: 0, totalRemaining: 0 };
+      bySem.set(b.sem, entry);
+    }
+    entry.bills.push(b);
+    entry.totalPrice += toNumber(b.amount);
+    entry.totalPaid += toNumber(b.paid);
+    entry.totalRemaining += Math.max(toNumber(b.remaining), 0);
+  }
+  return Array.from(bySem.values());
+}
+
+export function totalRemaining(bills: StudentBill[]): number {
+  return bills.reduce((sum, b) => sum + Math.max(toNumber(b.remaining), 0), 0);
 }
 
 export function formatShortDate(iso: string, withTime = false): string {

@@ -21,6 +21,7 @@ import {
 
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { ChildrenScreen } from '../screens/parent/ChildrenScreen';
 import { ChildDetailScreen } from '../screens/parent/ChildDetailScreen';
 import { PayBillScreen } from '../screens/parent/PayBillScreen';
@@ -86,6 +87,7 @@ const AuthNavigator = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
     <AuthStack.Screen name="Login" component={LoginScreen} />
     <AuthStack.Screen name="Register" component={RegisterScreen} />
+    <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
   </AuthStack.Navigator>
 );
 

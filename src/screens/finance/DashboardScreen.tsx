@@ -312,7 +312,7 @@ export const DashboardScreen = ({ navigation }: any) => {
           recent.map((p, i) => (
             <TouchableOpacity
               key={p.txn_id}
-              onPress={() => navigation.navigate('Receipt', { payment: p, studentId: p.student_id ?? p.admission_no })}
+              onPress={() => navigation.navigate('Receipt', { payment: p, studentId: p.student_id })}
               style={[styles.recentRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
             >
               <View style={{ flex: 1 }}>

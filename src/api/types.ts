@@ -94,7 +94,7 @@ export interface Payment {
   created_at: string;
   paid_at?: string | null;
   initiated_by?: string | null; // Omitted for parent view
-  // Not sent by the backend yet; shown in reports when present
+  // Not sent by GET /payments yet (only admission_no is); shown in reports when present
   student_id?: string;
   student_name?: string;
 }
@@ -138,6 +138,12 @@ export interface LinkParentRequest {
   student_id: string;
 }
 
+export interface ResetPasswordRequest {
+  email: string;
+  code: string; // 8-digit code emailed by POST /auth/forgot-password
+  new_password: string;
+}
+
 export interface ChangePasswordRequest {
   old_password: string;
   new_password: string;
@@ -156,6 +162,17 @@ export interface Bill {
   util_name: string;
   sem: string;
   amount: string;
+}
+
+/** A bill as one student sees it, as returned by GET /students/{student_id}/bills. */
+export interface StudentBill extends Bill {
+  paid: string; // completed payments only
+  remaining: string;
+}
+
+export interface StudentBills {
+  student: Std;
+  bills: StudentBill[];
 }
 
 /**

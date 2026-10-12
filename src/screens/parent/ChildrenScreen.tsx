@@ -10,6 +10,8 @@ import {
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { api } from '../../api/client';
 import { Std } from '../../api/types';
+import { formatGHS } from '../../utils/currency';
+import { totalRemaining } from '../../utils/finance';
 import { AppCard } from '../../components/common/AppCard';
 import { AppBadge } from '../../components/common/AppBadge';
 import { AppButton } from '../../components/common/AppButton';
@@ -22,12 +24,21 @@ export const ChildrenScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Outstanding balance per student_id; missing while loading or if that child's bills failed to load
+  const [owing, setOwing] = useState<Record<string, number>>({});
 
   const fetchChildren = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.getMyChildren();
-      setChildren(data || []);
+      const data = (await api.getMyChildren()) || [];
+      setChildren(data);
+
+      const results = await Promise.allSettled(data.map((c) => api.getStudentBills(c.student_id)));
+      const next: Record<string, number> = {};
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') next[data[i].student_id] = totalRemaining(r.value.bills);
+      });
+      setOwing(next);
     } catch (err: any) {
       setError(err.message || 'Failed to load children records');
     } finally {
@@ -97,6 +108,22 @@ export const ChildrenScreen = ({ navigation }: any) => {
               </View>
               <AppBadge label={`Grade ${item.grade}`} variant="primary" size="sm" />
             </View>
+
+            {owing[item.student_id] !== undefined && (
+              <View
+                style={[
+                  styles.owingBox,
+                  { backgroundColor: owing[item.student_id] > 0 ? colors.errorContainer : colors.successContainer },
+                ]}
+              >
+                <Text style={[styles.owingLabel, { color: owing[item.student_id] > 0 ? colors.error : colors.success }]}>
+                  {owing[item.student_id] > 0 ? 'Outstanding balance' : 'All bills paid'}
+                </Text>
+                {owing[item.student_id] > 0 && (
+                  <Text style={[styles.owingValue, { color: colors.error }]}>{formatGHS(owing[item.student_id])}</Text>
+                )}
+              </View>
+            )}
 
             <View style={styles.cardActions}>
               <AppButton
@@ -171,6 +198,23 @@ const styles = StyleSheet.create({
   studentId: {
     fontSize: 12,
     marginTop: 2,
+  },
+  owingBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  owingLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  owingValue: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   cardActions: {
     flexDirection: 'row',

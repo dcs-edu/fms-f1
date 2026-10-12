@@ -3,6 +3,7 @@ import { Std, Payment } from '../api/types';
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: { email?: string } | undefined;
 };
 
 export type ParentTabParamList = {
