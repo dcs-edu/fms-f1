@@ -28,7 +28,6 @@ import { PaymentHistoryScreen } from '../screens/parent/PaymentHistoryScreen';
 import { LedgerScreen } from '../screens/bursar/LedgerScreen';
 import { BursarPayScreen } from '../screens/bursar/BursarPayScreen';
 import { BillsScreen } from '../screens/bursar/BillsScreen';
-import { AdminOverviewScreen } from '../screens/admin/AdminOverviewScreen';
 import { EnrollStudentScreen } from '../screens/admin/EnrollStudentScreen';
 import { LinkParentScreen } from '../screens/admin/LinkParentScreen';
 import { RoleManagerScreen } from '../screens/admin/RoleManagerScreen';
@@ -36,6 +35,9 @@ import { CashPaymentScreen } from '../screens/admin/CashPaymentScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
 import { ChangePasswordScreen } from '../screens/shared/ChangePasswordScreen';
 import { ReceiptScreen } from '../screens/shared/ReceiptScreen';
+import { DashboardScreen } from '../screens/finance/DashboardScreen';
+import { DebtorsScreen } from '../screens/finance/DebtorsScreen';
+import { PaymentsReportScreen } from '../screens/finance/PaymentsReportScreen';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -74,6 +76,8 @@ const tabIcon = (name: IconName) => ({ color, size }: { color: string; size: num
 const SHARED_STACK_SCREENS = {
   receipt: { title: 'Receipt' },
   changePassword: { title: 'Change Password' },
+  debtors: { title: 'Students Owing' },
+  paymentsReport: { title: 'Payments Report' },
 };
 
 // ==================== AUTH ====================
@@ -130,6 +134,11 @@ const BursarTabsNavigator = () => {
   return (
     <BursarTabs.Navigator screenOptions={tabs}>
       <BursarTabs.Screen
+        name="OverviewTab"
+        component={DashboardScreen}
+        options={{ title: 'Dashboard', tabBarIcon: tabIcon('grid-outline') }}
+      />
+      <BursarTabs.Screen
         name="LedgerTab"
         component={LedgerScreen}
         options={{ title: 'Ledger', tabBarIcon: tabIcon('list-outline') }}
@@ -158,6 +167,7 @@ const BursarNavigator = () => {
   return (
     <BursarStack.Navigator screenOptions={stack}>
       <BursarStack.Screen name="BursarTabs" component={BursarTabsNavigator} options={{ headerShown: false }} />
+      <BursarStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
       <BursarStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <BursarStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </BursarStack.Navigator>
@@ -172,8 +182,8 @@ const AdminTabsNavigator = () => {
     <AdminTabs.Navigator screenOptions={tabs}>
       <AdminTabs.Screen
         name="OverviewTab"
-        component={AdminOverviewScreen}
-        options={{ title: 'Overview', tabBarIcon: tabIcon('grid-outline') }}
+        component={DashboardScreen}
+        options={{ title: 'Dashboard', tabBarIcon: tabIcon('grid-outline') }}
       />
       <AdminTabs.Screen
         name="EnrollTab"
@@ -209,6 +219,8 @@ const AdminNavigator = () => {
   return (
     <AdminStack.Navigator screenOptions={stack}>
       <AdminStack.Screen name="AdminTabs" component={AdminTabsNavigator} options={{ headerShown: false }} />
+      <AdminStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
+      <AdminStack.Screen name="PaymentsReport" component={PaymentsReportScreen} options={SHARED_STACK_SCREENS.paymentsReport} />
       <AdminStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <AdminStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </AdminStack.Navigator>
@@ -223,8 +235,8 @@ const PrincipalTabsNavigator = () => {
     <PrincipalTabs.Navigator screenOptions={tabs}>
       <PrincipalTabs.Screen
         name="OverviewTab"
-        component={AdminOverviewScreen}
-        options={{ title: 'Overview', tabBarIcon: tabIcon('grid-outline') }}
+        component={DashboardScreen}
+        options={{ title: 'Dashboard', tabBarIcon: tabIcon('grid-outline') }}
       />
       <PrincipalTabs.Screen
         name="EnrollTab"
@@ -260,6 +272,8 @@ const PrincipalNavigator = () => {
   return (
     <PrincipalStack.Navigator screenOptions={stack}>
       <PrincipalStack.Screen name="PrincipalTabs" component={PrincipalTabsNavigator} options={{ headerShown: false }} />
+      <PrincipalStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
+      <PrincipalStack.Screen name="PaymentsReport" component={PaymentsReportScreen} options={SHARED_STACK_SCREENS.paymentsReport} />
       <PrincipalStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <PrincipalStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </PrincipalStack.Navigator>

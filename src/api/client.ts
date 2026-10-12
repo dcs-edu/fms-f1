@@ -18,6 +18,9 @@ import {
   DateRangeKey,
   UserRole,
   User,
+  Bill,
+  StudentDebt,
+  PaymentQuery,
 } from './types';
 
 export class ApiError extends Error {
@@ -174,6 +177,16 @@ class ApiClient {
     });
   }
 
+  /** Preset ranges use ?range=; custom windows send ?from=&to= (needs backend support). */
+  async getPayments(query: PaymentQuery): Promise<Payment[]> {
+    const qs =
+      'range' in query
+        ? `range=${query.range}`
+        : `from=${encodeURIComponent(query.from)}&to=${encodeURIComponent(query.to)}`;
+    const data = await this.request<Payment[] | null>(`/payments?${qs}`, { method: 'GET' });
+    return data || [];
+  }
+
   async recordCashPayment(data: NewPaymentRequest): Promise<Payment> {
     return this.request<Payment>('/payments', {
       method: 'POST',
@@ -204,7 +217,24 @@ class ApiClient {
     });
   }
 
+  /** Every active bill (utility + semester price). */
+  async getBills(): Promise<Bill[]> {
+    const data = await this.request<Bill[] | null>('/utilities', { method: 'GET' });
+    return data || [];
+  }
+
   // ==================== STUDENTS & PARENT LINKS ====================
+
+  async getStudents(): Promise<Std[]> {
+    const data = await this.request<Std[] | null>('/students', { method: 'GET' });
+    return data || [];
+  }
+
+  /** One row per student per bill that still has money owing. */
+  async getStudentDebts(): Promise<StudentDebt[]> {
+    const data = await this.request<StudentDebt[] | null>('/students/owing', { method: 'GET' });
+    return data || [];
+  }
 
   async createStudent(student: CreateStudentRequest): Promise<{ student_info: Student; student_id: string }> {
     return this.request<{ student_info: Student; student_id: string }>('/new/student', {

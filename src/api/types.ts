@@ -94,6 +94,9 @@ export interface Payment {
   created_at: string;
   paid_at?: string | null;
   initiated_by?: string | null; // Omitted for parent view
+  // Not sent by the backend yet; shown in reports when present
+  student_id?: string;
+  student_name?: string;
 }
 
 export interface StudentPayments {
@@ -146,3 +149,37 @@ export interface UpdateRoleRequest {
 }
 
 export type DateRangeKey = 'today' | 'this_week' | 'this_month' | 'three_months_to_date';
+
+/** A utility price with its name joined in, as returned by GET /utilities. */
+export interface Bill {
+  bill_id: number;
+  util_name: string;
+  sem: string;
+  amount: string;
+}
+
+/**
+ * One unpaid (or part-paid) bill for one student, as returned by GET /students/owing.
+ * The backend currently has no json tag on admission_no, so it arrives as `AdmissionNo`;
+ * both spellings are accepted. Money fields are float64 on the backend, so they may be numbers.
+ */
+export interface StudentDebt {
+  admission_no?: string;
+  AdmissionNo?: string;
+  student_id?: string;
+  fname: string;
+  mname?: string | null;
+  lname: string;
+  grade: string;
+  bill_id: number;
+  util_name: string;
+  sem: string;
+  price: number | string;
+  paid: number | string;
+  owing: number | string;
+}
+
+/** A preset range key, or a custom inclusive day window (YYYY-MM-DD). */
+export type PaymentQuery =
+  | { range: DateRangeKey }
+  | { from: string; to: string };
