@@ -17,6 +17,7 @@ import {
   UtilityPrice,
   DateRangeKey,
   UserRole,
+  User,
 } from './types';
 
 export class ApiError extends Error {

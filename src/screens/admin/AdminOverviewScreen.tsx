@@ -48,7 +48,7 @@ export const AdminOverviewScreen = ({ navigation }: any) => {
             Enroll Student
           </Text>
           <Text style={[styles.actionDesc, { color: colors.textSecondary }]}>
-            Register student & calculate graduation card ID
+            Register student & calculate graduation student ID
           </Text>
         </AppCard>
 
@@ -74,7 +74,7 @@ export const AdminOverviewScreen = ({ navigation }: any) => {
             Link Parent
           </Text>
           <Text style={[styles.actionDesc, { color: colors.textSecondary }]}>
-            Connect parent account with student card ID
+            Connect parent account with student using ID
           </Text>
         </AppCard>
 

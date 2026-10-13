@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
  * - Can be overridden dynamically or via environment
  */
 export const DEFAULT_API_URL =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+  Platform.OS === 'android' ? 'http://172.22.106.30:8080' : 'http://localhost:8080';
 
 export const APP_CONFIG = {
   appName: 'School Fees & Management',

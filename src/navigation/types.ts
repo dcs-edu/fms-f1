@@ -61,12 +61,7 @@ export type PrincipalStackParamList = {
   ChangePassword: undefined;
 };
 
-export type TeacherTabParamList = {
-  RosterTab: undefined;
-  ProfileTab: undefined;
-};
-
 export type TeacherStackParamList = {
-  TeacherTabs: undefined;
+  ProfileHome: undefined;
   ChangePassword: undefined;
 };
