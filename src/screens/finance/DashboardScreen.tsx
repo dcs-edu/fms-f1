@@ -134,6 +134,13 @@ export const DashboardScreen = ({ navigation }: any) => {
   const allFailed = Object.keys(failed).length === 4;
 
   const openDebtors = () => navigation.navigate('Debtors');
+  const openStudents = () => navigation.navigate('Students');
+  // the bursar already has fees as a tab
+  const openUtilities = () => (isBursar ? navigation.navigate('BillsTab') : navigation.navigate('Utilities'));
+  const manageLinks: { label: string; caption: string; icon: React.ComponentProps<typeof Ionicons>['name']; onPress: () => void }[] = [
+    { label: 'Students', caption: 'Search every student and open their profile', icon: 'people-outline', onPress: openStudents },
+    { label: 'Fees & utilities', caption: 'Add fees and set semester prices', icon: 'pricetags-outline', onPress: openUtilities },
+  ];
   const openPayments = () => (isBursar ? navigation.navigate('LedgerTab') : navigation.navigate('PaymentsReport'));
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." />;
@@ -184,6 +191,7 @@ export const DashboardScreen = ({ navigation }: any) => {
             value={data.students ? String(totalStudents) : '—'}
             icon="people-outline"
             caption={data.bills ? `${billCount} active bill${billCount === 1 ? '' : 's'}` : undefined}
+            onPress={openStudents}
           />
           <MetricTile
             label="Owing fees"
@@ -195,6 +203,28 @@ export const DashboardScreen = ({ navigation }: any) => {
           />
         </View>
       )}
+
+      {/* Manage */}
+      <AppCard style={styles.card}>
+        {manageLinks.map((l, i) => (
+          <TouchableOpacity
+            key={l.label}
+            onPress={l.onPress}
+            style={[styles.manageRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+          >
+            <View style={[styles.manageIcon, { backgroundColor: colors.primaryContainer }]}>
+              <Ionicons name={l.icon} size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>{l.label}</Text>
+              <Text style={[styles.recentMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                {l.caption}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        ))}
+      </AppCard>
 
       {/* Fee standing donut */}
       <AppCard style={styles.card} onPress={data.debts ? openDebtors : undefined}>
@@ -384,6 +414,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 12,
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  manageIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   section: {
     fontSize: 16,

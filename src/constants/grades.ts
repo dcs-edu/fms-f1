@@ -19,3 +19,12 @@ export const GRADE_OPTIONS: GradeOption[] = [
   { label: 'JHS 2 (Basic 8)', value: '8' },
   { label: 'JHS 3 (Basic 9)', value: '9' },
 ];
+
+const GRADE_ORDER = GRADE_OPTIONS.map((g) => g.value);
+
+/** Sort key that keeps grades in school order (Daycare first, JHS 3 last); unknown grades go last. */
+export const gradeRank = (g: string) => (GRADE_ORDER.indexOf(g) + 1) || 999;
+
+/** Short display name for a stored grade value, e.g. "KG1" -> "Kindergarten 1". */
+export const gradeLabel = (g: string) =>
+  GRADE_OPTIONS.find((o) => o.value === g)?.label.replace(/\s*\(.*\)$/, '') ?? g;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,16 +12,13 @@ import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { StudentBill } from '../../api/types';
 import { isValidCurrencyAmount, formatGHS } from '../../utils/currency';
-import { groupBillsBySemester, toNumber } from '../../utils/finance';
 import { AppTextInput } from '../../components/common/AppTextInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { BillLineItem } from '../../components/payments/BillLineItem';
+import { SemesterBillPicker, initialBill, owingOn } from '../../components/payments/SemesterBillPicker';
 import { PaystackWebViewModal } from '../../components/payments/PaystackWebViewModal';
-
-const owingOn = (b: StudentBill) => Math.max(toNumber(b.remaining), 0);
 
 export const PayBillScreen = ({ route, navigation }: any) => {
   const { student, billId: initialBillId } = route.params;
@@ -29,7 +26,6 @@ export const PayBillScreen = ({ route, navigation }: any) => {
 
   const [bills, setBills] = useState<StudentBill[]>([]);
   const [billsLoading, setBillsLoading] = useState(true);
-  const [sem, setSem] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<number | null>(null);
   const [amount, setAmount] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -53,10 +49,8 @@ export const PayBillScreen = ({ route, navigation }: any) => {
         .getStudentBills(student.student_id)
         .then((res) => {
           setBills(res.bills);
-          // Start on the requested bill, else the first semester that still has money owing
-          const initial = res.bills.find((b) => b.bill_id === initialBillId && owingOn(b) > 0);
-          const firstOwing = res.bills.find((b) => owingOn(b) > 0);
-          setSem((initial ?? firstOwing ?? res.bills[0])?.sem ?? null);
+          // Preselect the bill the parent tapped; the picker opens on its semester
+          const initial = initialBillId !== undefined ? initialBill(res.bills, initialBillId) : undefined;
           if (initial) {
             setSelectedBillId(initial.bill_id);
             setAmount(owingOn(initial).toFixed(2));
@@ -71,8 +65,6 @@ export const PayBillScreen = ({ route, navigation }: any) => {
     loadBills();
   }, [loadBills]);
 
-  const semesters = useMemo(() => groupBillsBySemester(bills), [bills]);
-  const activeSem = semesters.find((s) => s.sem === sem) ?? semesters[0];
   const selectedBill = bills.find((b) => b.bill_id === selectedBillId) ?? null;
 
   const handleStartPayment = async () => {
@@ -170,7 +162,7 @@ export const PayBillScreen = ({ route, navigation }: any) => {
 
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-      {semesters.length === 0 ? (
+      {bills.length === 0 ? (
         <AppCard style={styles.emptyCard} variant="outlined">
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No bills yet</Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -184,62 +176,7 @@ export const PayBillScreen = ({ route, navigation }: any) => {
         </AppCard>
       ) : (
         <>
-          {semesters.length > 1 && (
-            <View style={styles.semPills}>
-              {semesters.map((s) => (
-                <TouchableOpacity
-                  key={s.sem}
-                  onPress={() => setSem(s.sem)}
-                  style={[
-                    styles.semPill,
-                    { backgroundColor: activeSem?.sem === s.sem ? colors.primary : colors.surfaceVariant },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: activeSem?.sem === s.sem ? '#FFFFFF' : colors.textPrimary,
-                      fontSize: 12,
-                      fontWeight: '600',
-                    }}
-                  >
-                    {s.sem}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {activeSem && (
-            <>
-              <View style={[styles.semSummary, { backgroundColor: colors.surfaceVariant }]}>
-                <Text style={[styles.semTitle, { color: colors.textPrimary }]}>{activeSem.sem} bills</Text>
-                <View style={styles.semFigures}>
-                  <View>
-                    <Text style={[styles.semLabel, { color: colors.textMuted }]}>Total</Text>
-                    <Text style={[styles.semValue, { color: colors.textPrimary }]}>{formatGHS(activeSem.totalPrice)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'center' }}>
-                    <Text style={[styles.semLabel, { color: colors.textMuted }]}>Paid</Text>
-                    <Text style={[styles.semValue, { color: colors.success }]}>{formatGHS(activeSem.totalPaid)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.semLabel, { color: colors.textMuted }]}>Owing</Text>
-                    <Text style={[styles.semValue, { color: colors.error }]}>{formatGHS(activeSem.totalRemaining)}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Choose a bill to pay</Text>
-              {activeSem.bills.map((b) => (
-                <BillLineItem
-                  key={b.bill_id}
-                  bill={b}
-                  selected={b.bill_id === selectedBillId}
-                  onPress={() => selectBill(b)}
-                />
-              ))}
-            </>
-          )}
+          <SemesterBillPicker bills={bills} selectedBillId={selectedBillId} onSelect={selectBill} />
 
           {selectedBill && (
             <View style={styles.form}>
@@ -317,46 +254,6 @@ const styles = StyleSheet.create({
   childMeta: {
     fontSize: 13,
     marginTop: 2,
-  },
-  semPills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  semPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-  },
-  semSummary: {
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 16,
-  },
-  semTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  semFigures: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  semLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  semValue: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  sectionHeading: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 10,
   },
   form: {
     marginTop: 8,

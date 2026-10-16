@@ -31,7 +31,9 @@ export type BursarTabParamList = {
 export type BursarStackParamList = {
   BursarTabs: undefined;
   Debtors: undefined;
-  Receipt: { payment: Payment; studentId?: string };
+  Students: undefined;
+  StudentProfile: { student: Std };
+  Receipt: { payment: Payment; studentName?: string; studentId?: string };
   ChangePassword: undefined;
 };
 
@@ -48,7 +50,10 @@ export type AdminStackParamList = {
   AdminTabs: undefined;
   Debtors: undefined;
   PaymentsReport: undefined;
-  Receipt: { payment: Payment; studentId?: string };
+  Students: undefined;
+  StudentProfile: { student: Std };
+  Utilities: undefined;
+  Receipt: { payment: Payment; studentName?: string; studentId?: string };
   ChangePassword: undefined;
 };
 
@@ -65,7 +70,10 @@ export type PrincipalStackParamList = {
   PrincipalTabs: undefined;
   Debtors: undefined;
   PaymentsReport: undefined;
-  Receipt: { payment: Payment; studentId?: string };
+  Students: undefined;
+  StudentProfile: { student: Std };
+  Utilities: undefined;
+  Receipt: { payment: Payment; studentName?: string; studentId?: string };
   ChangePassword: undefined;
 };
 

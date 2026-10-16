@@ -39,6 +39,8 @@ import { ReceiptScreen } from '../screens/shared/ReceiptScreen';
 import { DashboardScreen } from '../screens/finance/DashboardScreen';
 import { DebtorsScreen } from '../screens/finance/DebtorsScreen';
 import { PaymentsReportScreen } from '../screens/finance/PaymentsReportScreen';
+import { StudentsScreen } from '../screens/students/StudentsScreen';
+import { StudentProfileScreen } from '../screens/students/StudentProfileScreen';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -79,6 +81,9 @@ const SHARED_STACK_SCREENS = {
   changePassword: { title: 'Change Password' },
   debtors: { title: 'Students Owing' },
   paymentsReport: { title: 'Payments Report' },
+  students: { title: 'Students' },
+  studentProfile: { title: 'Student Profile' },
+  utilities: { title: 'Fees & Utilities' },
 };
 
 // ==================== AUTH ====================
@@ -170,6 +175,8 @@ const BursarNavigator = () => {
     <BursarStack.Navigator screenOptions={stack}>
       <BursarStack.Screen name="BursarTabs" component={BursarTabsNavigator} options={{ headerShown: false }} />
       <BursarStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
+      <BursarStack.Screen name="Students" component={StudentsScreen} options={SHARED_STACK_SCREENS.students} />
+      <BursarStack.Screen name="StudentProfile" component={StudentProfileScreen} options={SHARED_STACK_SCREENS.studentProfile} />
       <BursarStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <BursarStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </BursarStack.Navigator>
@@ -223,6 +230,9 @@ const AdminNavigator = () => {
       <AdminStack.Screen name="AdminTabs" component={AdminTabsNavigator} options={{ headerShown: false }} />
       <AdminStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
       <AdminStack.Screen name="PaymentsReport" component={PaymentsReportScreen} options={SHARED_STACK_SCREENS.paymentsReport} />
+      <AdminStack.Screen name="Students" component={StudentsScreen} options={SHARED_STACK_SCREENS.students} />
+      <AdminStack.Screen name="StudentProfile" component={StudentProfileScreen} options={SHARED_STACK_SCREENS.studentProfile} />
+      <AdminStack.Screen name="Utilities" component={BillsScreen} options={SHARED_STACK_SCREENS.utilities} />
       <AdminStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <AdminStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </AdminStack.Navigator>
@@ -276,6 +286,9 @@ const PrincipalNavigator = () => {
       <PrincipalStack.Screen name="PrincipalTabs" component={PrincipalTabsNavigator} options={{ headerShown: false }} />
       <PrincipalStack.Screen name="Debtors" component={DebtorsScreen} options={SHARED_STACK_SCREENS.debtors} />
       <PrincipalStack.Screen name="PaymentsReport" component={PaymentsReportScreen} options={SHARED_STACK_SCREENS.paymentsReport} />
+      <PrincipalStack.Screen name="Students" component={StudentsScreen} options={SHARED_STACK_SCREENS.students} />
+      <PrincipalStack.Screen name="StudentProfile" component={StudentProfileScreen} options={SHARED_STACK_SCREENS.studentProfile} />
+      <PrincipalStack.Screen name="Utilities" component={BillsScreen} options={SHARED_STACK_SCREENS.utilities} />
       <PrincipalStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <PrincipalStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />
     </PrincipalStack.Navigator>

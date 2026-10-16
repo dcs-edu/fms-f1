@@ -24,6 +24,10 @@ import {
   StudentDebt,
   PaymentQuery,
 } from './types';
+import { deriveStudentID } from '../utils/studentId';
+
+/** Payments carry grad_year + seq_num instead of a student_id; build it once here for every screen. */
+const withStudentId = (p: Payment): Payment => ({ ...p, student_id: deriveStudentID(p) });
 
 export class ApiError extends Error {
   status: number;
@@ -174,16 +178,18 @@ class ApiClient {
   }
 
   async verifyOnlinePayment(reference: string): Promise<Payment> {
-    return this.request<Payment>(`/payments/online/${encodeURIComponent(reference)}`, {
+    const payment = await this.request<Payment>(`/payments/online/${encodeURIComponent(reference)}`, {
       method: 'GET',
     });
+    return withStudentId(payment);
   }
 
   async getStudentPaymentHistory(studentId: string, range: DateRangeKey = 'this_month'): Promise<StudentPayments> {
-    return this.request<StudentPayments>(
+    const data = await this.request<StudentPayments>(
       `/payments/students/${encodeURIComponent(studentId)}?range=${range}`,
       { method: 'GET' }
     );
+    return { ...data, payments: (data.payments || []).map(withStudentId) };
   }
 
   /** Every bill with what this student has paid on it and what is left. */
@@ -198,9 +204,7 @@ class ApiClient {
   // ==================== BURSAR & CASH ====================
 
   async getAllPayments(range: DateRangeKey = 'this_month'): Promise<Payment[]> {
-    return this.request<Payment[]>(`/payments?range=${range}`, {
-      method: 'GET',
-    });
+    return this.getPayments({ range });
   }
 
   /** Preset ranges use ?range=; custom windows send ?from=&to= (needs backend support). */
@@ -210,27 +214,21 @@ class ApiClient {
         ? `range=${query.range}`
         : `from=${encodeURIComponent(query.from)}&to=${encodeURIComponent(query.to)}`;
     const data = await this.request<Payment[] | null>(`/payments?${qs}`, { method: 'GET' });
-    return data || [];
+    return (data || []).map(withStudentId);
   }
 
   async recordCashPayment(data: NewPaymentRequest): Promise<Payment> {
-    return this.request<Payment>('/payments', {
+    const payment = await this.request<Payment>('/payments', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return withStudentId(payment);
   }
 
   // ==================== UTILITIES & BILLS ====================
 
-  /** Go router maps listing utilities to POST /utilities/list */
-  async listUtilities(): Promise<Utility[]> {
-    return this.request<Utility[]>('/utilities/list', {
-      method: 'POST',
-    });
-  }
-
   async createUtility(utilName: string): Promise<Utility> {
-    return this.request<Utility>('/utilities', {
+    return this.request<Utility>('/utilities/create', {
       method: 'POST',
       body: JSON.stringify({ util_name: utilName }),
     });
@@ -245,7 +243,7 @@ class ApiClient {
 
   /** Every active bill (utility + semester price). */
   async getBills(): Promise<Bill[]> {
-    const data = await this.request<Bill[] | null>('/utilities', { method: 'GET' });
+    const data = await this.request<Bill[] | null>('/utilities/list', { method: 'GET' });
     return data || [];
   }
 
@@ -254,6 +252,15 @@ class ApiClient {
   async getStudents(): Promise<Std[]> {
     const data = await this.request<Std[] | null>('/students', { method: 'GET' });
     return data || [];
+  }
+
+  /** Full profile of one student. */
+  async getStudentProfile(studentId: string): Promise<Student> {
+    const student = await this.request<Student>(
+      `/students/profile?student_id=${encodeURIComponent(studentId)}`,
+      { method: 'GET' }
+    );
+    return { ...student, student_id: deriveStudentID(student) ?? studentId };
   }
 
   /** One row per student per bill that still has money owing. */

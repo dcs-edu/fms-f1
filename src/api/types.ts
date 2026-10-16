@@ -35,9 +35,10 @@ export interface JWTCustomClaims {
   iat: number;
 }
 
+/** The full profile, as returned by GET /students/profile. student_id is derived from grad_year + seq_num. */
 export interface Student {
   admission_no: string;
-  student_id: string; // e.g. "30-0042"
+  student_id?: string; // e.g. "30-0042"; not a column, so may arrive empty
   fname: string;
   mname?: string;
   lname: string;
@@ -87,16 +88,16 @@ export type PaymentStatus = 'pending' | 'completed' | 'failed';
 export interface Payment {
   txn_id: string;
   bill_id: number;
-  admission_no: string;
   amount: string; // Decimal string e.g. "150.00"
   status: PaymentStatus;
   reference?: string | null;
   created_at: string;
   paid_at?: string | null;
   initiated_by?: string | null; // Omitted for parent view
-  // Not sent by GET /payments yet (only admission_no is); shown in reports when present
-  student_id?: string;
-  student_name?: string;
+  grad_year?: number;
+  seq_num?: number;
+  student_id?: string; // not sent; the API client derives it from grad_year + seq_num
+  student_name?: string; // not sent yet; shown in reports when present
 }
 
 export interface StudentPayments {
@@ -156,9 +157,10 @@ export interface UpdateRoleRequest {
 
 export type DateRangeKey = 'today' | 'this_week' | 'this_month' | 'three_months_to_date';
 
-/** A utility price with its name joined in, as returned by GET /utilities. */
+/** A utility price with its name joined in, as returned by GET /utilities/list. */
 export interface Bill {
   bill_id: number;
+  util_id?: number; // not sent yet; lets the utilities screen add a semester price to an existing fee
   util_name: string;
   sem: string;
   amount: string;

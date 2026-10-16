@@ -9,9 +9,10 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
-import { isValidStudentID } from '../../utils/studentId';
 import { isValidCurrencyAmount, formatGHS } from '../../utils/currency';
-import { AppTextInput } from '../../components/common/AppTextInput';
+import { useStudentBillLookup } from '../../hooks/useStudentBillLookup';
+import { owingOn } from '../../components/payments/SemesterBillPicker';
+import { StudentBillForm } from '../../components/payments/StudentBillForm';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
@@ -19,21 +20,14 @@ import { ErrorBanner } from '../../components/common/ErrorBanner';
 export const CashPaymentScreen = ({ navigation }: any) => {
   const { colors } = useAppTheme();
 
-  const [studentId, setStudentId] = useState('');
-  const [billId, setBillId] = useState('');
-  const [amount, setAmount] = useState('');
+  const lookup = useStudentBillLookup();
+  const { student, selectedBill, amount } = lookup;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleRecordCash = async () => {
-    if (!isValidStudentID(studentId.trim())) {
-      setError('Student ID must match YY-NNNN format (e.g. 30-0042)');
-      return;
-    }
-
-    const parsedBillId = parseInt(billId, 10);
-    if (isNaN(parsedBillId) || parsedBillId <= 0) {
-      setError('Please provide a valid numeric Bill ID');
+    if (!student || !selectedBill) {
+      setError('Find the student and choose the bill being paid');
       return;
     }
 
@@ -42,14 +36,18 @@ export const CashPaymentScreen = ({ navigation }: any) => {
       setError(valCheck.error || 'Invalid payment amount');
       return;
     }
+    if (parseFloat(amount) > owingOn(selectedBill) + 0.001) {
+      setError(`Amount is more than the ${formatGHS(owingOn(selectedBill))} left on ${selectedBill.util_name}`);
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
       const payment = await api.recordCashPayment({
-        student_id: studentId.trim(),
-        bill_id: parsedBillId,
+        student_id: student.student_id,
+        bill_id: selectedBill.bill_id,
         amount: amount.trim(),
       });
 
@@ -62,13 +60,14 @@ export const CashPaymentScreen = ({ navigation }: any) => {
             onPress: () =>
               navigation.navigate('Receipt', {
                 payment,
-                studentId: studentId.trim(),
+                studentName: `${student.fname} ${student.lname}`,
+                studentId: student.student_id,
               }),
           },
         ]
       );
 
-      setAmount('');
+      lookup.refresh();
     } catch (err: any) {
       setError(err.message || 'Cash payment recording failed');
     } finally {
@@ -104,38 +103,14 @@ export const CashPaymentScreen = ({ navigation }: any) => {
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       <View style={styles.form}>
-        <AppTextInput
-          label="Student Card ID"
-          placeholder="e.g. 30-0042"
-          value={studentId}
-          onChangeText={setStudentId}
-          autoCapitalize="characters"
-          hint="Printed on student ID card"
-        />
-
-        <AppTextInput
-          label="Bill ID"
-          placeholder="e.g. 1"
-          value={billId}
-          onChangeText={setBillId}
-          keyboardType="number-pad"
-          hint="Utility price ID (tuition, feeding, etc.)"
-        />
-
-        <AppTextInput
-          label="Amount Collected (GH₵)"
-          placeholder="e.g. 150.00"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          hint="Maximum 2 decimal places"
-        />
+        <StudentBillForm lookup={lookup} />
 
         <AppButton
           title="Record Cash & Issue Receipt"
           variant="primary"
           size="lg"
           loading={loading}
+          disabled={!selectedBill}
           onPress={handleRecordCash}
           style={{ marginTop: 12 }}
         />
