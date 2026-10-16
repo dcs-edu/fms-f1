@@ -223,7 +223,7 @@ class ApiClient {
   // ==================== ADMIN ====================
 
   async getAllUsers(): Promise<User[]> {
-    return this.request<User[]>('/admin', {
+    return this.request<User[]>('/admin/users', {
       method: 'GET',
     });
   }

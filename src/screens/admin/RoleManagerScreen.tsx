@@ -20,9 +20,15 @@ import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 const ROLES: UserRole[] = ['admin', 'principal', 'bursar', 'teacher', 'parent'];
+// Principals may promote/demote anyone up to principal, but never grant or revoke admin.
+const PRINCIPAL_ROLES = ROLES.filter((r) => r !== 'admin');
 
 export const RoleManagerScreen = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, role: currentRole } = useAuth();
+  const isAdmin = currentRole === 'admin';
+  const assignableRoles = isAdmin ? ROLES : PRINCIPAL_ROLES;
+  const canEditUser = (u: User) =>
+    u.email !== currentUser?.email && (isAdmin || u.role !== 'admin');
   const { colors } = useAppTheme();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -60,6 +66,10 @@ export const RoleManagerScreen = () => {
   const handleOpenEdit = (user: User) => {
     if (user.email === currentUser?.email) {
       Alert.alert('Restricted', "You cannot change your own role to prevent locking yourself out of the admin panel.");
+      return;
+    }
+    if (!canEditUser(user)) {
+      Alert.alert('Restricted', 'Only an admin can change the role of an admin account.');
       return;
     }
     setSelectedUser(user);
@@ -130,7 +140,7 @@ export const RoleManagerScreen = () => {
                 <AppBadge label={item.role} role={item.role} size="sm" />
               </View>
 
-              {!isMe && (
+              {canEditUser(item) && (
                 <View style={styles.cardFooter}>
                   <AppButton
                     title="Change Role"
@@ -158,7 +168,7 @@ export const RoleManagerScreen = () => {
             </Text>
 
             <View style={styles.rolesGrid}>
-              {ROLES.map((r) => (
+              {assignableRoles.map((r) => (
                 <TouchableOpacity
                   key={r}
                   onPress={() => setNewRole(r)}

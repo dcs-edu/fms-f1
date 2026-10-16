@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { isValidStudentID } from '../../utils/studentId';
 import { AppTextInput } from '../../components/common/AppTextInput';
@@ -59,62 +58,62 @@ export const LinkParentScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Link Parent to Student
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Staff verification: authorize a parent account to access a student's billing records
-          </Text>
-        </View>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Link Parent to Student
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Staff verification: authorize a parent account to access a student's billing records
+        </Text>
+      </View>
 
-        <AppCard style={styles.infoCard}>
-          <Text style={[styles.infoTitle, { color: colors.primary }]}>
-            🛡️ Security Verification
-          </Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            To protect student privacy and prevent unauthorized access, parents cannot link children themselves. Only school staff can confirm relationships and issue links.
-          </Text>
-        </AppCard>
+      <AppCard style={styles.infoCard}>
+        <Text style={[styles.infoTitle, { color: colors.primary }]}>
+          🛡️ Security Verification
+        </Text>
+        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          To protect student privacy and prevent unauthorized access, parents cannot link children themselves. Only school staff can confirm relationships and issue links.
+        </Text>
+      </AppCard>
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-        <View style={styles.form}>
-          <AppTextInput
-            label="Parent Email Address"
-            placeholder="e.g. ama.parent@example.com"
-            value={parentEmail}
-            onChangeText={setParentEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            hint="Account must already be registered as a parent"
-          />
+      <View style={styles.form}>
+        <AppTextInput
+          label="Parent Email Address"
+          placeholder="e.g. ama.parent@example.com"
+          value={parentEmail}
+          onChangeText={setParentEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          hint="Account must already be registered as a parent"
+        />
 
-          <AppTextInput
-            label="Student Card ID"
-            placeholder="e.g. 30-0042"
-            value={studentId}
-            onChangeText={setStudentId}
-            autoCapitalize="characters"
-            hint="Student ID printed on their card (YY-NNNN)"
-          />
+        <AppTextInput
+          label="Student Card ID"
+          placeholder="e.g. 30-0042"
+          value={studentId}
+          onChangeText={setStudentId}
+          autoCapitalize="characters"
+          hint="Student ID printed on their card (YY-NNNN)"
+        />
 
-          <AppButton
-            title="Confirm & Link Account"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            onPress={handleLink}
-            style={{ marginTop: 12 }}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <AppButton
+          title="Confirm & Link Account"
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleLink}
+          style={{ marginTop: 12 }}
+        />
+      </View>
+    </KeyboardAwareScrollView>
   );
 };
 

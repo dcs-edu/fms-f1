@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { Utility } from '../../api/types';
 import { isValidCurrencyAmount, formatGHS } from '../../utils/currency';
@@ -114,71 +113,71 @@ export const PayBillScreen = ({ route, navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <AppCard style={styles.childHeader}>
-          <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>
-            Paying Fees For
+      <AppCard style={styles.childHeader}>
+        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>
+          Paying Fees For
+        </Text>
+        <Text style={[styles.childName, { color: colors.textPrimary }]}>
+          {student.fname} {student.lname}
+        </Text>
+        <Text style={[styles.childMeta, { color: colors.textMuted }]}>
+          Student ID: {student.student_id} • Grade {student.grade}
+        </Text>
+      </AppCard>
+
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+      <View style={styles.form}>
+        <AppTextInput
+          label="Bill ID"
+          value={billId}
+          onChangeText={setBillId}
+          keyboardType="number-pad"
+          placeholder="e.g. 1 (Tuition fee)"
+          hint="Enter the bill ID assigned for this semester"
+        />
+
+        <AppTextInput
+          label="Payment Amount (GH₵)"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 150.00"
+          hint="Enter exact amount (max 2 decimal places). Full or partial payment accepted."
+        />
+
+        <View style={[styles.noticeBox, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}>
+          <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
+            💡 Online payments are securely processed by Paystack using Mobile Money (MTN, Telecel, AT) or Visa/Mastercard.
           </Text>
-          <Text style={[styles.childName, { color: colors.textPrimary }]}>
-            {student.fname} {student.lname}
-          </Text>
-          <Text style={[styles.childMeta, { color: colors.textMuted }]}>
-            Student ID: {student.student_id} • Grade {student.grade}
-          </Text>
-        </AppCard>
-
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
-
-        <View style={styles.form}>
-          <AppTextInput
-            label="Bill ID"
-            value={billId}
-            onChangeText={setBillId}
-            keyboardType="number-pad"
-            placeholder="e.g. 1 (Tuition fee)"
-            hint="Enter the bill ID assigned for this semester"
-          />
-
-          <AppTextInput
-            label="Payment Amount (GH₵)"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 150.00"
-            hint="Enter exact amount (max 2 decimal places). Full or partial payment accepted."
-          />
-
-          <View style={[styles.noticeBox, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}>
-            <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
-              💡 Online payments are securely processed by Paystack using Mobile Money (MTN, Telecel, AT) or Visa/Mastercard.
-            </Text>
-          </View>
-
-          <AppButton
-            title={`Proceed to Pay ${amount ? formatGHS(amount) : ''}`}
-            variant="primary"
-            size="lg"
-            loading={loading}
-            onPress={handleStartPayment}
-            style={styles.payBtn}
-          />
         </View>
 
-        {paystackVisible && (
-          <PaystackWebViewModal
-            visible={paystackVisible}
-            authorizationUrl={authUrl}
-            reference={reference}
-            onSuccess={handlePaystackSuccess}
-            onClose={() => setPaystackVisible(false)}
-          />
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <AppButton
+          title={`Proceed to Pay ${amount ? formatGHS(amount) : ''}`}
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleStartPayment}
+          style={styles.payBtn}
+        />
+      </View>
+
+      {paystackVisible && (
+        <PaystackWebViewModal
+          visible={paystackVisible}
+          authorizationUrl={authUrl}
+          reference={reference}
+          onSuccess={handlePaystackSuccess}
+          onClose={() => setPaystackVisible(false)}
+        />
+      )}
+    </KeyboardAwareScrollView>
   );
 };
 

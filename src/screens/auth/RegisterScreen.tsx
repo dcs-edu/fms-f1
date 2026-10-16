@@ -3,13 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { AppTextInput } from '../../components/common/AppTextInput';
 import { AppButton } from '../../components/common/AppButton';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
@@ -54,83 +53,83 @@ export const RegisterScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Create Parent Account
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Create Parent Account
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Register to view your children's bills and make online payments
+        </Text>
+      </View>
+
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+      <View style={styles.form}>
+        <AppTextInput
+          label="Full Name"
+          placeholder="e.g. Ama Mensah"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <AppTextInput
+          label="Email Address"
+          placeholder="e.g. ama.mensah@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <AppTextInput
+          label="Phone Number"
+          placeholder="e.g. 0201234567"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
+
+        <AppTextInput
+          label="Password"
+          placeholder="Min. 8 characters"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <AppTextInput
+          label="Confirm Password"
+          placeholder="Re-enter password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+
+        <AppButton
+          title="Create Account"
+          onPress={handleRegister}
+          loading={loading}
+          style={styles.registerBtn}
+        />
+
+        <View style={styles.footer}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            Already have an account?{' '}
           </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Register to view your children's bills and make online payments
-          </Text>
-        </View>
-
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
-
-        <View style={styles.form}>
-          <AppTextInput
-            label="Full Name"
-            placeholder="e.g. Ama Mensah"
-            value={name}
-            onChangeText={setName}
-          />
-
-          <AppTextInput
-            label="Email Address"
-            placeholder="e.g. ama.mensah@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <AppTextInput
-            label="Phone Number"
-            placeholder="e.g. 0201234567"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-
-          <AppTextInput
-            label="Password"
-            placeholder="Min. 8 characters"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <AppTextInput
-            label="Confirm Password"
-            placeholder="Re-enter password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-
-          <AppButton
-            title="Create Account"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.registerBtn}
-          />
-
-          <View style={styles.footer}>
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-              Already have an account?{' '}
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
+              Sign In
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </KeyboardAwareScrollView>
   );
 };
 

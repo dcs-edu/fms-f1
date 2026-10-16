@@ -215,7 +215,7 @@ const AdminNavigator = () => {
   );
 };
 
-// ==================== PRINCIPAL (admin without role management) ====================
+// ==================== PRINCIPAL (admin screens; role changes exclude admin) ====================
 
 const PrincipalTabsNavigator = () => {
   const { tabs } = useScreenOptions();
@@ -236,7 +236,7 @@ const PrincipalTabsNavigator = () => {
         component={LinkParentScreen}
         options={{ title: 'Link', tabBarIcon: tabIcon('link-outline') }}
       />
-      <AdminTabs.Screen
+      <PrincipalTabs.Screen
         name="RolesTab"
         component={RoleManagerScreen}
         options={{ title: 'Roles', tabBarIcon: tabIcon('shield-checkmark-outline') }}
@@ -259,7 +259,6 @@ const PrincipalNavigator = () => {
   const { stack } = useScreenOptions();
   return (
     <PrincipalStack.Navigator screenOptions={stack}>
-      <AdminStack.Screen name="AdminTabs" component={AdminTabsNavigator} options={{ headerShown: false }} />
       <PrincipalStack.Screen name="PrincipalTabs" component={PrincipalTabsNavigator} options={{ headerShown: false }} />
       <PrincipalStack.Screen name="Receipt" component={ReceiptScreen} options={SHARED_STACK_SCREENS.receipt} />
       <PrincipalStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={SHARED_STACK_SCREENS.changePassword} />

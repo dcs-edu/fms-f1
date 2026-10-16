@@ -51,6 +51,7 @@ export type PrincipalTabParamList = {
   OverviewTab: undefined;
   EnrollTab: undefined;
   LinkParentTab: undefined;
+  RolesTab: undefined;
   CashPayTab: undefined;
   ProfileTab: undefined;
 };

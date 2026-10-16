@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { isValidStudentID } from '../../utils/studentId';
 import { isValidCurrencyAmount, formatGHS } from '../../utils/currency';
@@ -78,70 +77,70 @@ export const CashPaymentScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Record Physical Cash Payment
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Official cash desk: only admin and principal accounts can record cash collections
-          </Text>
-        </View>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Record Physical Cash Payment
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Official cash desk: only admin and principal accounts can record cash collections
+        </Text>
+      </View>
 
-        <AppCard style={styles.auditCard}>
-          <Text style={[styles.auditTitle, { color: colors.primary }]}>
-            ⚠️ Database Row-Locking & Overpayment Protection
-          </Text>
-          <Text style={[styles.auditText, { color: colors.textSecondary }]}>
-            The system executes this transaction with an exclusive database row lock. If this amount exceeds the remaining balance on the bill, the backend will strictly reject the request.
-          </Text>
-        </AppCard>
+      <AppCard style={styles.auditCard}>
+        <Text style={[styles.auditTitle, { color: colors.primary }]}>
+          ⚠️ Database Row-Locking & Overpayment Protection
+        </Text>
+        <Text style={[styles.auditText, { color: colors.textSecondary }]}>
+          The system executes this transaction with an exclusive database row lock. If this amount exceeds the remaining balance on the bill, the backend will strictly reject the request.
+        </Text>
+      </AppCard>
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-        <View style={styles.form}>
-          <AppTextInput
-            label="Student Card ID"
-            placeholder="e.g. 30-0042"
-            value={studentId}
-            onChangeText={setStudentId}
-            autoCapitalize="characters"
-            hint="Printed on student ID card"
-          />
+      <View style={styles.form}>
+        <AppTextInput
+          label="Student Card ID"
+          placeholder="e.g. 30-0042"
+          value={studentId}
+          onChangeText={setStudentId}
+          autoCapitalize="characters"
+          hint="Printed on student ID card"
+        />
 
-          <AppTextInput
-            label="Bill ID"
-            placeholder="e.g. 1"
-            value={billId}
-            onChangeText={setBillId}
-            keyboardType="number-pad"
-            hint="Utility price ID (tuition, feeding, etc.)"
-          />
+        <AppTextInput
+          label="Bill ID"
+          placeholder="e.g. 1"
+          value={billId}
+          onChangeText={setBillId}
+          keyboardType="number-pad"
+          hint="Utility price ID (tuition, feeding, etc.)"
+        />
 
-          <AppTextInput
-            label="Amount Collected (GH₵)"
-            placeholder="e.g. 150.00"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
-            hint="Maximum 2 decimal places"
-          />
+        <AppTextInput
+          label="Amount Collected (GH₵)"
+          placeholder="e.g. 150.00"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          hint="Maximum 2 decimal places"
+        />
 
-          <AppButton
-            title="Record Cash & Issue Receipt"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            onPress={handleRecordCash}
-            style={{ marginTop: 12 }}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <AppButton
+          title="Record Cash & Issue Receipt"
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleRecordCash}
+          style={{ marginTop: 12 }}
+        />
+      </View>
+    </KeyboardAwareScrollView>
   );
 };
 

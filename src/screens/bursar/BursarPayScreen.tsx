@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { isValidStudentID } from '../../utils/studentId';
 import { isValidCurrencyAmount, formatGHS } from '../../utils/currency';
@@ -102,80 +101,80 @@ export const BursarPayScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Initiate Online Fee Payment
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Bursars pay online via Paystack so every payment leaves a verified digital audit trail
-          </Text>
-        </View>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Initiate Online Fee Payment
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Bursars pay online via Paystack so every payment leaves a verified digital audit trail
+        </Text>
+      </View>
 
-        <AppCard style={styles.policyNotice}>
-          <Text style={[styles.policyTitle, { color: colors.primary }]}>
-            🔒 Anti-Leakage Payment Rule
-          </Text>
-          <Text style={[styles.policyText, { color: colors.textSecondary }]}>
-            The system restricts bursars from taking unverified cash directly. All fee payments recorded by the bursar must go through Paystack.
-          </Text>
-        </AppCard>
+      <AppCard style={styles.policyNotice}>
+        <Text style={[styles.policyTitle, { color: colors.primary }]}>
+          🔒 Anti-Leakage Payment Rule
+        </Text>
+        <Text style={[styles.policyText, { color: colors.textSecondary }]}>
+          The system restricts bursars from taking unverified cash directly. All fee payments recorded by the bursar must go through Paystack.
+        </Text>
+      </AppCard>
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-        <View style={styles.form}>
-          <AppTextInput
-            label="Student Card ID"
-            placeholder="e.g. 30-0042"
-            value={studentId}
-            onChangeText={setStudentId}
-            autoCapitalize="characters"
-            hint="Printed on the student's ID card"
-          />
+      <View style={styles.form}>
+        <AppTextInput
+          label="Student Card ID"
+          placeholder="e.g. 30-0042"
+          value={studentId}
+          onChangeText={setStudentId}
+          autoCapitalize="characters"
+          hint="Printed on the student's ID card"
+        />
 
-          <AppTextInput
-            label="Bill ID"
-            placeholder="e.g. 1"
-            value={billId}
-            onChangeText={setBillId}
-            keyboardType="number-pad"
-            hint="Target utility bill semester price ID"
-          />
+        <AppTextInput
+          label="Bill ID"
+          placeholder="e.g. 1"
+          value={billId}
+          onChangeText={setBillId}
+          keyboardType="number-pad"
+          hint="Target utility bill semester price ID"
+        />
 
-          <AppTextInput
-            label="Amount (GH₵)"
-            placeholder="e.g. 250.00"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
-            hint="Maximum 2 decimal digits"
-          />
+        <AppTextInput
+          label="Amount (GH₵)"
+          placeholder="e.g. 250.00"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          hint="Maximum 2 decimal digits"
+        />
 
-          <AppButton
-            title="Proceed to Paystack"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            onPress={handleStartPayment}
-            style={{ marginTop: 12 }}
-          />
-        </View>
+        <AppButton
+          title="Proceed to Paystack"
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleStartPayment}
+          style={{ marginTop: 12 }}
+        />
+      </View>
 
-        {paystackVisible && (
-          <PaystackWebViewModal
-            visible={paystackVisible}
-            authorizationUrl={authUrl}
-            reference={reference}
-            onSuccess={handlePaystackSuccess}
-            onClose={() => setPaystackVisible(false)}
-          />
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {paystackVisible && (
+        <PaystackWebViewModal
+          visible={paystackVisible}
+          authorizationUrl={authUrl}
+          reference={reference}
+          onSuccess={handlePaystackSuccess}
+          onClose={() => setPaystackVisible(false)}
+        />
+      )}
+    </KeyboardAwareScrollView>
   );
 };
 

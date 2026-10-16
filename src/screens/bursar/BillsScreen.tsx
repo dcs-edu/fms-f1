@@ -5,11 +5,12 @@ import {
   StyleSheet,
   FlatList,
   Modal,
-  ScrollView,
   RefreshControl,
   Alert,
 } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { Utility } from '../../api/types';
 import { formatGHS, isValidCurrencyAmount } from '../../utils/currency';
@@ -195,8 +196,8 @@ export const BillsScreen = () => {
       />
 
       {/* Add Utility Modal */}
-      <Modal visible={showAddUtil} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      <Modal visible={showAddUtil} transparent animationType="slide" onRequestClose={() => setShowAddUtil(false)}>
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               Add Fee Category
@@ -223,17 +224,17 @@ export const BillsScreen = () => {
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Set Utility Price Modal */}
-      <Modal visible={showSetPrice} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      <Modal visible={showSetPrice} transparent animationType="slide" onRequestClose={() => setShowSetPrice(false)}>
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               Set Semester Price (Bill)
             </Text>
-            <ScrollView>
+            <KeyboardAwareScrollView bottomOffset={KEYBOARD_BOTTOM_OFFSET} keyboardShouldPersistTaps="handled">
               <AppTextInput
                 label="Utility ID"
                 placeholder="e.g. 1"
@@ -270,9 +271,9 @@ export const BillsScreen = () => {
                   style={{ flex: 1 }}
                 />
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

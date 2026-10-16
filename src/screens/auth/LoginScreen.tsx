@@ -3,13 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { AppTextInput } from '../../components/common/AppTextInput';
 import { AppButton } from '../../components/common/AppButton';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
@@ -48,94 +47,94 @@ export const LoginScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
-              {isDark ? '☀️ Light' : '🌙 Dark'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setShowConfig(!showConfig)}>
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
-              ⚙️ Server URL
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {showConfig && (
-          <View style={[styles.configCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.configTitle, { color: colors.textPrimary }]}>
-              Backend Server Connection
-            </Text>
-            <AppTextInput
-              label="API Base URL"
-              value={customUrl}
-              onChangeText={setCustomUrl}
-              autoCapitalize="none"
-              hint="e.g. http://localhost:8080 or http://10.0.2.2:8080 (Android)"
-            />
-            <AppButton title="Update URL" size="sm" onPress={handleSaveUrl} />
-          </View>
-        )}
-
-        <View style={styles.header}>
-          <View style={[styles.logoIcon, { backgroundColor: colors.primaryContainer }]}>
-            <Text style={{ fontSize: 32 }}>🏫</Text>
-          </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            School Fees & Portal
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+            {isDark ? '☀️ Light' : '🌙 Dark'}
           </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Sign in with your registered account
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setShowConfig(!showConfig)}>
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+            ⚙️ Server URL
           </Text>
-        </View>
+        </TouchableOpacity>
+      </View>
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
-
-        <View style={styles.form}>
+      {showConfig && (
+        <View style={[styles.configCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.configTitle, { color: colors.textPrimary }]}>
+            Backend Server Connection
+          </Text>
           <AppTextInput
-            label="Email Address"
-            placeholder="e.g. mum@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            label="API Base URL"
+            value={customUrl}
+            onChangeText={setCustomUrl}
             autoCapitalize="none"
-            autoCorrect={false}
+            hint="e.g. http://localhost:8080 or http://10.0.2.2:8080 (Android)"
           />
-
-          <AppTextInput
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <AppButton
-            title="Sign In"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.loginBtn}
-          />
-
-          <View style={styles.footer}>
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-              Don't have an account yet?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
-                Register as Parent
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <AppButton title="Update URL" size="sm" onPress={handleSaveUrl} />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+
+      <View style={styles.header}>
+        <View style={[styles.logoIcon, { backgroundColor: colors.primaryContainer }]}>
+          <Text style={{ fontSize: 32 }}>🏫</Text>
+        </View>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          School Fees & Portal
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Sign in with your registered account
+        </Text>
+      </View>
+
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+      <View style={styles.form}>
+        <AppTextInput
+          label="Email Address"
+          placeholder="e.g. mum@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <AppTextInput
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <AppButton
+          title="Sign In"
+          onPress={handleLogin}
+          loading={loading}
+          style={styles.loginBtn}
+        />
+
+        <View style={styles.footer}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            Don't have an account yet?{' '}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
+              Register as Parent
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAwareScrollView>
   );
 };
 
