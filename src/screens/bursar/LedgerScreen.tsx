@@ -170,7 +170,7 @@ export const LedgerScreen = ({ navigation }: any) => {
             onPress={() =>
               navigation.navigate('Receipt', {
                 payment: item,
-                studentId: item.admission_no,
+                studentId: item.student_id,
               })
             }
           >

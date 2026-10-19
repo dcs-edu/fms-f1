@@ -7,7 +7,9 @@ import {
   TextInputProps,
   ViewStyle,
   TextStyle,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../contexts/ThemeContext';
 
 export interface AppTextInputProps extends TextInputProps {
@@ -30,10 +32,12 @@ export const AppTextInput: React.FC<AppTextInputProps> = ({
   rightIcon,
   onFocus,
   onBlur,
+  secureTextEntry,
   ...rest
 }) => {
   const { colors, borderRadius, spacing, typography } = useAppTheme();
   const [isFocused, setIsFocused] = useState(false);
+  const [isHidden, setIsHidden] = useState(true);
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
@@ -85,9 +89,26 @@ export const AppTextInput: React.FC<AppTextInputProps> = ({
             inputStyle,
           ]}
           {...rest}
+          secureTextEntry={secureTextEntry && isHidden}
         />
 
-        {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setIsHidden((h) => !h)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isHidden ? 'Show password' : 'Hide password'}
+            style={styles.iconRight}
+          >
+            <Ionicons
+              name={isHidden ? 'eye-outline' : 'eye-off-outline'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        ) : (
+          rightIcon && <View style={styles.iconRight}>{rightIcon}</View>
+        )}
       </View>
 
       {error ? (

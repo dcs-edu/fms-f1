@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { api } from '../../api/client';
-import { Payment, DateRangeKey } from '../../api/types';
+import { Payment, DateRangeKey, StudentBill } from '../../api/types';
 import { formatGHS } from '../../utils/currency';
+import { groupBillsBySemester, totalRemaining, toNumber } from '../../utils/finance';
 import { AppCard } from '../../components/common/AppCard';
 import { AppButton } from '../../components/common/AppButton';
 import { StatusPill } from '../../components/payments/StatusPill';
+import { BillLineItem } from '../../components/payments/BillLineItem';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -33,6 +36,29 @@ export const ChildDetailScreen = ({ route, navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bills, setBills] = useState<StudentBill[] | null>(null);
+  const [billsError, setBillsError] = useState<string | null>(null);
+
+  const fetchBills = useCallback(async () => {
+    try {
+      setBillsError(null);
+      const res = await api.getStudentBills(student.student_id);
+      setBills(res.bills);
+    } catch (err: any) {
+      setBillsError(err.message || 'Failed to load bills');
+    }
+  }, [student.student_id]);
+
+  // refetch on focus so balances update after coming back from a payment
+  useFocusEffect(
+    useCallback(() => {
+      fetchBills();
+    }, [fetchBills])
+  );
+
+  const semesters = useMemo(() => groupBillsBySemester(bills ?? []), [bills]);
+  const outstanding = totalRemaining(bills ?? []);
+  const totalBilled = (bills ?? []).reduce((s, b) => s + toNumber(b.amount), 0);
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -55,6 +81,7 @@ export const ChildDetailScreen = ({ route, navigation }: any) => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchPayments();
+    fetchBills();
   };
 
   const totalCompleted = payments
@@ -85,14 +112,22 @@ export const ChildDetailScreen = ({ route, navigation }: any) => {
                 ID: {student.student_id} • Grade {student.grade}
               </Text>
 
-              <View style={[styles.totalBox, { backgroundColor: colors.currencyBadge }]}>
-                <Text style={[styles.totalLabel, { color: colors.currencyText }]}>
-                  Total Paid in Period ({range.replace('_', ' ')})
-                </Text>
-                <Text style={[styles.totalValue, { color: colors.currencyText }]}>
-                  {formatGHS(totalCompleted.toFixed(2))}
-                </Text>
-              </View>
+              {bills && (
+                <View style={styles.balanceRow}>
+                  <View style={[styles.balanceBox, { backgroundColor: colors.surfaceVariant }]}>
+                    <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total Billed</Text>
+                    <Text style={[styles.balanceValue, { color: colors.textPrimary }]}>{formatGHS(totalBilled)}</Text>
+                  </View>
+                  <View style={[styles.balanceBox, { backgroundColor: outstanding > 0 ? colors.errorContainer : colors.successContainer }]}>
+                    <Text style={[styles.totalLabel, { color: outstanding > 0 ? colors.error : colors.success }]}>
+                      Outstanding
+                    </Text>
+                    <Text style={[styles.balanceValue, { color: outstanding > 0 ? colors.error : colors.success }]}>
+                      {formatGHS(outstanding)}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               <AppButton
                 title="Make a Payment Now"
@@ -101,6 +136,47 @@ export const ChildDetailScreen = ({ route, navigation }: any) => {
                 style={{ marginTop: 14 }}
               />
             </AppCard>
+
+            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
+              Fees & Bills
+            </Text>
+            {billsError ? (
+              <Text style={[styles.emptyText, styles.billsMsg, { color: colors.error }]}>{billsError}</Text>
+            ) : bills === null ? (
+              <Text style={[styles.emptyText, styles.billsMsg, { color: colors.textMuted }]}>Loading bills...</Text>
+            ) : semesters.length === 0 ? (
+              <Text style={[styles.emptyText, styles.billsMsg, { color: colors.textMuted }]}>
+                No bills have been published for this student yet.
+              </Text>
+            ) : (
+              semesters.map((s) => (
+                <View key={s.sem} style={styles.semBlock}>
+                  <View style={styles.semHeader}>
+                    <Text style={[styles.semTitle, { color: colors.textPrimary }]}>{s.sem}</Text>
+                    <Text style={[styles.semMeta, { color: colors.textMuted }]}>
+                      {formatGHS(s.totalPaid)} of {formatGHS(s.totalPrice)} paid
+                      {s.totalRemaining > 0 ? ` • ${formatGHS(s.totalRemaining)} owing` : ''}
+                    </Text>
+                  </View>
+                  {s.bills.map((b) => (
+                    <BillLineItem
+                      key={b.bill_id}
+                      bill={b}
+                      onPress={() => navigation.navigate('PayBill', { student, billId: b.bill_id })}
+                    />
+                  ))}
+                </View>
+              ))
+            )}
+
+            <View style={[styles.totalBox, { backgroundColor: colors.currencyBadge }]}>
+              <Text style={[styles.totalLabel, { color: colors.currencyText }]}>
+                Total Paid in Period ({range.replace(/_/g, ' ')})
+              </Text>
+              <Text style={[styles.totalValue, { color: colors.currencyText }]}>
+                {formatGHS(totalCompleted.toFixed(2))}
+              </Text>
+            </View>
 
             <View style={styles.rangeSelector}>
               {DATE_RANGES.map((r) => (
@@ -209,8 +285,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  totalBox: {
+  balanceRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 14,
+  },
+  balanceBox: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  balanceValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  semBlock: {
+    marginBottom: 8,
+  },
+  semHeader: {
+    marginBottom: 8,
+  },
+  semTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  semMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  billsMsg: {
+    marginBottom: 16,
+  },
+  totalBox: {
+    marginBottom: 14,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',

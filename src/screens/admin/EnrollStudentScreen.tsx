@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView, KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { GRADE_OPTIONS } from '../../constants/grades';
 import { AppTextInput } from '../../components/common/AppTextInput';
@@ -19,6 +19,8 @@ import { ErrorBanner } from '../../components/common/ErrorBanner';
 
 export const EnrollStudentScreen = () => {
   const { colors } = useAppTheme();
+
+  const mainScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 
   // Wizard Step: 1 = Personal, 2 = Guardian & Medical
   const [step, setStep] = useState<1 | 2>(1);
@@ -51,6 +53,14 @@ export const EnrollStudentScreen = () => {
     }
     setError(null);
     setStep(2);
+
+    mainScrollRef.current?.scrollTo({y: 0, animated: false});
+  };
+
+  const handleBack = () => {
+    setError(null);
+    setStep(1);
+    mainScrollRef.current?.scrollTo({y: 0, animated: false});
   };
 
   const handleEnroll = async () => {
@@ -132,181 +142,183 @@ export const EnrollStudentScreen = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAwareScrollView
+      ref={mainScrollRef}
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scroll}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Student Admission Wizard
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Student Admission Wizard
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Step {step} of 2: {step === 1 ? 'Personal Profile' : 'Guardian & Medical Contacts'}
+        </Text>
+      </View>
+
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+      {step === 1 ? (
+        <View>
+          <AppTextInput
+            label="First Name *"
+            placeholder="e.g. Kwame"
+            value={fname}
+            onChangeText={setFname}
+          />
+
+          <AppTextInput
+            label="Middle Name"
+            placeholder="e.g. Yaw"
+            value={mname}
+            onChangeText={setMname}
+          />
+
+          <AppTextInput
+            label="Last Name *"
+            placeholder="e.g. Mensah"
+            value={lname}
+            onChangeText={setLname}
+          />
+
+          <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>
+            Entry Grade Level *
           </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Step {step} of 2: {step === 1 ? 'Personal Profile' : 'Guardian & Medical Contacts'}
-          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gradeScroll} keyboardShouldPersistTaps="always">
+            {GRADE_OPTIONS.map((g) => (
+              <TouchableOpacity
+                key={g.value}
+                onPress={() => setGrade(g.value)}
+                style={[
+                  styles.gradePill,
+                  {
+                    backgroundColor: grade === g.value ? colors.primary : colors.surfaceVariant,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: grade === g.value ? '#FFFFFF' : colors.textPrimary,
+                    fontWeight: '600',
+                    fontSize: 12,
+                  }}
+                >
+                  {g.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <AppTextInput
+            label="Date of Birth (YYYY-MM-DD) *"
+            placeholder="2017-04-12"
+            value={dob}
+            onChangeText={setDob}
+          />
+
+          <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Gender *</Text>
+          <View style={styles.genderRow}>
+            {['M', 'F'].map((g) => (
+              <TouchableOpacity
+                key={g}
+                onPress={() => setGender(g)}
+                style={[
+                  styles.genderBtn,
+                  {
+                    backgroundColor: gender === g ? colors.primary : colors.surfaceVariant,
+                  },
+                ]}
+              >
+                <Text style={{ color: gender === g ? '#FFFFFF' : colors.textPrimary, fontWeight: '700' }}>
+                  {g === 'M' ? 'Male (M)' : 'Female (F)'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <AppTextInput
+            label="Nationality *"
+            placeholder="e.g. Ghanaian"
+            value={nationality}
+            onChangeText={setNationality}
+          />
+
+          <AppTextInput
+            label="Residential Address *"
+            placeholder="e.g. 12 Ridge Avenue, Kumasi"
+            value={address}
+            onChangeText={setAddress}
+          />
+
+          <AppButton title="Next: Guardian Details →" variant="primary" onPress={handleNext} style={{ marginTop: 12 }} />
         </View>
+      ) : (
+        <View>
+          <AppTextInput
+            label="Guardian Full Name *"
+            placeholder="e.g. Ama Mensah"
+            value={guardian}
+            onChangeText={setGuardian}
+          />
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
+          <AppTextInput
+            label="Guardian Phone Contact *"
+            placeholder="e.g. +233201234567"
+            value={gContact}
+            onChangeText={setGContact}
+            keyboardType="phone-pad"
+          />
 
-        {step === 1 ? (
-          <View>
-            <AppTextInput
-              label="First Name *"
-              placeholder="e.g. Kwame"
-              value={fname}
-              onChangeText={setFname}
+          <AppTextInput
+            label="Guardian Occupation *"
+            placeholder="e.g. Trader, Civil Servant, Engineer"
+            value={gOccupation}
+            onChangeText={setGOccupation}
+          />
+
+          <AppTextInput
+            label="Emergency Contact Phone *"
+            placeholder="e.g. +233209876543"
+            value={eContact}
+            onChangeText={setEContact}
+            keyboardType="phone-pad"
+          />
+
+          <AppTextInput
+            label="Medical Conditions (if any)"
+            placeholder="e.g. Asthmatic, None"
+            value={medCon}
+            onChangeText={setMedCon}
+          />
+
+          <AppTextInput
+            label="Allergies (if any)"
+            placeholder="e.g. Peanuts, Penicillin, None"
+            value={allergies}
+            onChangeText={setAllergies}
+          />
+
+          <View style={styles.stepButtons}>
+            <AppButton
+              title="← Back"
+              variant="outline"
+              onPress={() => setStep(1)}
+              style={{ flex: 1 }}
             />
-
-            <AppTextInput
-              label="Middle Name"
-              placeholder="e.g. Yaw"
-              value={mname}
-              onChangeText={setMname}
+            <AppButton
+              title="Submit & Enroll"
+              variant="primary"
+              loading={loading}
+              onPress={handleEnroll}
+              style={{ flex: 2 }}
             />
-
-            <AppTextInput
-              label="Last Name *"
-              placeholder="e.g. Mensah"
-              value={lname}
-              onChangeText={setLname}
-            />
-
-            <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>
-              Entry Grade Level *
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gradeScroll}>
-              {GRADE_OPTIONS.map((g) => (
-                <TouchableOpacity
-                  key={g.value}
-                  onPress={() => setGrade(g.value)}
-                  style={[
-                    styles.gradePill,
-                    {
-                      backgroundColor: grade === g.value ? colors.primary : colors.surfaceVariant,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: grade === g.value ? '#FFFFFF' : colors.textPrimary,
-                      fontWeight: '600',
-                      fontSize: 12,
-                    }}
-                  >
-                    {g.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <AppTextInput
-              label="Date of Birth (YYYY-MM-DD) *"
-              placeholder="2017-04-12"
-              value={dob}
-              onChangeText={setDob}
-            />
-
-            <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Gender *</Text>
-            <View style={styles.genderRow}>
-              {['M', 'F'].map((g) => (
-                <TouchableOpacity
-                  key={g}
-                  onPress={() => setGender(g)}
-                  style={[
-                    styles.genderBtn,
-                    {
-                      backgroundColor: gender === g ? colors.primary : colors.surfaceVariant,
-                    },
-                  ]}
-                >
-                  <Text style={{ color: gender === g ? '#FFFFFF' : colors.textPrimary, fontWeight: '700' }}>
-                    {g === 'M' ? 'Male (M)' : 'Female (F)'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <AppTextInput
-              label="Nationality *"
-              placeholder="e.g. Ghanaian"
-              value={nationality}
-              onChangeText={setNationality}
-            />
-
-            <AppTextInput
-              label="Residential Address *"
-              placeholder="e.g. 12 Ridge Avenue, Kumasi"
-              value={address}
-              onChangeText={setAddress}
-            />
-
-            <AppButton title="Next: Guardian Details →" variant="primary" onPress={handleNext} style={{ marginTop: 12 }} />
           </View>
-        ) : (
-          <View>
-            <AppTextInput
-              label="Guardian Full Name *"
-              placeholder="e.g. Ama Mensah"
-              value={guardian}
-              onChangeText={setGuardian}
-            />
-
-            <AppTextInput
-              label="Guardian Phone Contact *"
-              placeholder="e.g. +233201234567"
-              value={gContact}
-              onChangeText={setGContact}
-              keyboardType="phone-pad"
-            />
-
-            <AppTextInput
-              label="Guardian Occupation *"
-              placeholder="e.g. Trader, Civil Servant, Engineer"
-              value={gOccupation}
-              onChangeText={setGOccupation}
-            />
-
-            <AppTextInput
-              label="Emergency Contact Phone *"
-              placeholder="e.g. +233209876543"
-              value={eContact}
-              onChangeText={setEContact}
-              keyboardType="phone-pad"
-            />
-
-            <AppTextInput
-              label="Medical Conditions (if any)"
-              placeholder="e.g. Asthmatic, None"
-              value={medCon}
-              onChangeText={setMedCon}
-            />
-
-            <AppTextInput
-              label="Allergies (if any)"
-              placeholder="e.g. Peanuts, Penicillin, None"
-              value={allergies}
-              onChangeText={setAllergies}
-            />
-
-            <View style={styles.stepButtons}>
-              <AppButton
-                title="← Back"
-                variant="outline"
-                onPress={() => setStep(1)}
-                style={{ flex: 1 }}
-              />
-              <AppButton
-                title="Submit & Enroll"
-                variant="primary"
-                loading={loading}
-                onPress={handleEnroll}
-                style={{ flex: 2 }}
-              />
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </View>
+      )}
+    </KeyboardAwareScrollView>
   );
 };
 
@@ -317,6 +329,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     paddingBottom: 40,
+    flexGrow: 1
   },
   header: {
     marginBottom: 16,

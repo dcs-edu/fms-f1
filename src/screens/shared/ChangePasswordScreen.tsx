@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { AppTextInput } from '../../components/common/AppTextInput';
 import { AppButton } from '../../components/common/AppButton';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
@@ -56,7 +58,12 @@ export const ChangePasswordScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView
+      bottomOffset={KEYBOARD_BOTTOM_OFFSET}
+      keyboardShouldPersistTaps="handled"
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+    >
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       <AppTextInput
@@ -89,7 +96,7 @@ export const ChangePasswordScreen = ({ navigation }: any) => {
         loading={loading}
         style={{ marginTop: 12 }}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 };
 
