@@ -257,7 +257,7 @@ class ApiClient {
   /** Full profile of one student. */
   async getStudentProfile(studentId: string): Promise<Student> {
     const student = await this.request<Student>(
-      `/students/profile?student_id=${encodeURIComponent(studentId)}`,
+      `/students/profile/${encodeURIComponent(studentId)}`,
       { method: 'GET' }
     );
     return { ...student, student_id: deriveStudentID(student) ?? studentId };
