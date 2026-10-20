@@ -65,7 +65,7 @@ export const DashboardScreen = ({ navigation }: any) => {
       api.getStudents(),
       api.getStudentDebts(),
       api.getBills(),
-      api.getPayments({ range: 'this_month' }),
+      api.getAllPayments('this_month'),
     ]);
     const pick = <T,>(r: PromiseSettledResult<T>) => (r.status === 'fulfilled' ? r.value : null);
     const why = (r: PromiseSettledResult<unknown>) =>

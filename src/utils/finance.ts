@@ -117,7 +117,8 @@ export function owingByBill(debts: StudentDebt[]): { billId: number; label: stri
 
 export function billLabel(bills: Map<number, Bill>, billId: number): string {
   const b = bills.get(billId);
-  return b ? `${b.util_name} · ${b.sem}` : `Bill #${billId}`;
+  // GET /utilities/list only returns active fees, so a miss is a fee that has since been removed
+  return b ? `${b.util_name} · ${b.sem}` : 'Removed fee';
 }
 
 /** Payer label for a payment row: the student's name and ID once GET /payments joins them in. */

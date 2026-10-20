@@ -4,26 +4,23 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } 
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { api } from '../../api/client';
-import { Bill, DateRangeKey, Payment, PaymentQuery, PaymentStatus } from '../../api/types';
+import { Bill, DateRangeKey, Payment, PaymentStatus } from '../../api/types';
 import { formatGHS } from '../../utils/currency';
 import { billLabel, formatShortDate, payerLabel, sumCompleted, toNumber } from '../../utils/finance';
 import { AppCard } from '../../components/common/AppCard';
-import { AppTextInput } from '../../components/common/AppTextInput';
-import { AppButton } from '../../components/common/AppButton';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { StatusPill } from '../../components/payments/StatusPill';
 import { RangeSelector } from '../../components/finance/RangeSelector';
 
-type RangeChoice = DateRangeKey | 'custom';
 type StatusFilter = 'all' | PaymentStatus;
 
-const RANGES: { key: RangeChoice; label: string }[] = [
+// Preset ranges only: the backend deliberately doesn't take arbitrary dates on GET /payments
+const RANGES: { key: DateRangeKey; label: string }[] = [
   { key: 'today', label: 'Today' },
   { key: 'this_week', label: 'This week' },
   { key: 'this_month', label: 'This month' },
   { key: 'three_months_to_date', label: 'Last 3 months' },
-  { key: 'custom', label: 'Custom' },
 ];
 
 const STATUSES: { key: StatusFilter; label: string }[] = [
@@ -44,24 +41,11 @@ const COLUMNS = [
 const TABLE_WIDTH = COLUMNS.reduce((w, c) => w + c.width, 0);
 const ROW_PADDING = 12;
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-const isValidDay = (s: string) => ISO_DAY.test(s) && !isNaN(new Date(`${s}T00:00:00`).getTime());
-const pad = (n: number) => String(n).padStart(2, '0');
-const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const monthStart = () => `${today().slice(0, 8)}01`;
-
 /** Every payment in a chosen timeframe, as a table with totals. Admin and principal only. */
 export const PaymentsReportScreen = ({ navigation }: any) => {
   const { colors } = useAppTheme();
 
-  const [range, setRange] = useState<RangeChoice>('this_month');
-  const [fromDay, setFromDay] = useState(monthStart());
-  const [toDay, setToDay] = useState(today());
-  const [query, setQuery] = useState<PaymentQuery>({ range: 'this_month' });
-  const [rangeError, setRangeError] = useState<string | null>(null);
+  const [range, setRange] = useState<DateRangeKey>('this_month');
   const [status, setStatus] = useState<StatusFilter>('completed');
 
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -72,22 +56,18 @@ export const PaymentsReportScreen = ({ navigation }: any) => {
 
   const load = useCallback(async () => {
     try {
-      const [p, b] = await Promise.all([api.getPayments(query), api.getBills().catch(() => [] as Bill[])]);
+      const [p, b] = await Promise.all([api.getAllPayments(range), api.getBills().catch(() => [] as Bill[])]);
       setError(null);
       setPayments([...p].sort((x, y) => y.created_at.localeCompare(x.created_at)));
       setBills(new Map(b.map((bill) => [bill.bill_id, bill])));
     } catch (err: any) {
       setPayments([]);
-      setError(
-        'from' in query
-          ? `${err.message || 'Request failed'}. Custom date ranges need the backend to accept ?from=&to= on GET /payments.`
-          : err.message || 'Failed to load payments'
-      );
+      setError(err.message || 'Failed to load payments');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [query]);
+  }, [range]);
 
   // also reruns when `load` changes, i.e. when a new timeframe is picked
   useFocusEffect(
@@ -96,26 +76,10 @@ export const PaymentsReportScreen = ({ navigation }: any) => {
     }, [load])
   );
 
-  const chooseRange = (key: RangeChoice) => {
-    setRange(key);
-    if (key !== 'custom' && !('range' in query && query.range === key)) {
-      setLoading(true);
-      setQuery({ range: key });
-    }
-  };
-
-  const applyCustom = () => {
-    if (!isValidDay(fromDay) || !isValidDay(toDay)) {
-      setRangeError('Use the format YYYY-MM-DD, e.g. 2026-09-01');
-      return;
-    }
-    if (fromDay > toDay) {
-      setRangeError('The start date must be on or before the end date');
-      return;
-    }
-    setRangeError(null);
+  const chooseRange = (key: DateRangeKey) => {
+    if (key === range) return;
     setLoading(true);
-    setQuery({ from: fromDay, to: toDay });
+    setRange(key);
   };
 
   const rows = useMemo(
@@ -128,10 +92,7 @@ export const PaymentsReportScreen = ({ navigation }: any) => {
   const failedCount = payments.filter((p) => p.status === 'failed').length;
   const rowsTotal = rows.reduce((s, p) => s + toNumber(p.amount), 0);
 
-  const periodLabel =
-    'from' in query
-      ? `${formatShortDate(`${query.from}T00:00:00`)} – ${formatShortDate(`${query.to}T00:00:00`)}`
-      : RANGES.find((r) => r.key === query.range)?.label;
+  const periodLabel = RANGES.find((r) => r.key === range)?.label;
 
   const headerCell = (label: string, width: number, align: 'left' | 'right' = 'left') => (
     <Text key={label} style={[styles.th, { width, textAlign: align, color: colors.textSecondary }]}>
@@ -159,33 +120,6 @@ export const PaymentsReportScreen = ({ navigation }: any) => {
       <View style={styles.block}>
         <RangeSelector options={RANGES} value={range} onChange={chooseRange} />
       </View>
-
-      {range === 'custom' && (
-        <AppCard style={styles.customCard} variant="outlined">
-          <View style={styles.customRow}>
-            <AppTextInput
-              label="From"
-              value={fromDay}
-              onChangeText={setFromDay}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              autoCorrect={false}
-              containerStyle={styles.customInput}
-            />
-            <AppTextInput
-              label="To"
-              value={toDay}
-              onChangeText={setToDay}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              autoCorrect={false}
-              containerStyle={styles.customInput}
-            />
-          </View>
-          {rangeError && <Text style={[styles.rangeError, { color: colors.error }]}>{rangeError}</Text>}
-          <AppButton title="Apply range" size="sm" onPress={applyCustom} />
-        </AppCard>
-      )}
 
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
@@ -285,23 +219,6 @@ const styles = StyleSheet.create({
   },
   block: {
     marginBottom: 12,
-  },
-  customCard: {
-    padding: 14,
-    marginTop: 0,
-    marginBottom: 12,
-  },
-  customRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  customInput: {
-    flex: 1,
-    marginBottom: 8,
-  },
-  rangeError: {
-    fontSize: 12,
-    marginBottom: 8,
   },
   summary: {
     padding: 16,

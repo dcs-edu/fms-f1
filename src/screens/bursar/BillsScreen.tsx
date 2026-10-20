@@ -4,30 +4,37 @@ import {
   View,
   Text,
   StyleSheet,
-  SectionList,
+  FlatList,
   Modal,
   RefreshControl,
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { KEYBOARD_BOTTOM_OFFSET } from '../../constants/keyboard';
 import { api } from '../../api/client';
 import { Bill, Utility } from '../../api/types';
 import { formatGHS, isValidCurrencyAmount } from '../../utils/currency';
-import { toNumber } from '../../utils/finance';
 import { AppCard } from '../../components/common/AppCard';
 import { AppButton } from '../../components/common/AppButton';
 import { AppTextInput } from '../../components/common/AppTextInput';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
-type ModalKind = 'newFee' | 'price' | null;
+/** A fee (utility) with every semester price it has. The id stays behind the scenes; people only see the name. */
+interface Fee {
+  id: number;
+  name: string;
+  prices: Bill[]; // newest semester first
+}
+
+const PREVIEW_PRICES = 3;
 
 /**
- * Fees & utilities for admin, principal and bursar. A utility (Tuition, PTA dues, ...) only becomes
- * something a student owes once it has a price for a semester, so a new fee is created with its first price.
+ * Fees & utilities for admin, principal and bursar. A fee (Tuition, PTA dues, ...) only becomes something
+ * a student owes once it has a price for a semester: add the fee by name, then tap it to price or remove it.
  */
 export const BillsScreen = () => {
   const { colors } = useAppTheme();
@@ -36,23 +43,22 @@ export const BillsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Fees made here. GET /utilities/list only returns fees that have a price, so a new one only lives here until priced
+  const [created, setCreated] = useState<Utility[]>([]);
 
-  const [modal, setModal] = useState<ModalKind>(null);
+  const [modal, setModal] = useState<'add' | 'fee' | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [utilName, setUtilName] = useState('');
+  const [newName, setNewName] = useState('');
   const [sem, setSem] = useState('');
   const [amount, setAmount] = useState('');
-  const [utilId, setUtilId] = useState<number | null>(null);
-  const [manualUtilId, setManualUtilId] = useState('');
-  // Utilities created here; kept so a failed first price can be retried without creating the utility twice
-  const [created, setCreated] = useState<Utility[]>([]);
 
   const fetchBills = useCallback(async () => {
     try {
       setError(null);
       setBills(await api.getBills());
     } catch (err: any) {
-      setError(err.message || 'Failed to load fees and bills');
+      setError(err.message || 'Failed to load fees');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,106 +71,185 @@ export const BillsScreen = () => {
     }, [fetchBills])
   );
 
-  const sections = useMemo(() => {
-    const bySem = new Map<string, Bill[]>();
-    for (const b of bills) bySem.set(b.sem, [...(bySem.get(b.sem) ?? []), b]);
-    return Array.from(bySem.entries()).map(([title, data]) => ({
-      title,
-      total: data.reduce((s, b) => s + toNumber(b.amount), 0),
-      data,
-    }));
-  }, [bills]);
-
-  // Fees that can take another semester price: those GET /utilities/list names a util_id for, plus any made here
-  const knownUtilities = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const b of bills) if (b.util_id) map.set(b.util_id, b.util_name);
-    for (const u of created) map.set(u.id, u.util_name);
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  const fees = useMemo(() => {
+    const map = new Map<number, Fee>();
+    for (const u of created) map.set(u.id, { id: u.id, name: u.util_name, prices: [] });
+    for (const b of bills) {
+      const fee = map.get(b.util_id) ?? { id: b.util_id, name: b.util_name, prices: [] };
+      fee.prices.push(b);
+      map.set(b.util_id, fee);
+    }
+    for (const f of map.values()) f.prices.sort((a, b) => b.sem.localeCompare(a.sem));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [bills, created]);
 
-  const openModal = (kind: ModalKind) => {
-    setUtilName('');
+  // Semesters already in use, newest first, offered as one-tap picks
+  const semesters = useMemo(
+    () => Array.from(new Set(bills.map((b) => b.sem).filter(Boolean))).sort((a, b) => b.localeCompare(a)),
+    [bills]
+  );
+
+  const selected = fees.find((f) => f.id === selectedId) ?? null;
+  const semesterChoices = selected ? semesters.filter((s) => !selected.prices.some((p) => p.sem === s)) : [];
+  // A fee made here with no price yet isn't in GET /utilities/list, so leaving now would strand it unseen
+  const mustPrice = modal === 'fee' && !!selected && selected.prices.length === 0 && created.some((u) => u.id === selected.id);
+
+  const openAdd = () => {
+    setNewName('');
+    setModal('add');
+  };
+
+  const openFee = (fee: Fee) => {
+    setSelectedId(fee.id);
+    setSem(semesters.find((s) => !fee.prices.some((p) => p.sem === s)) ?? '');
     setAmount('');
-    setManualUtilId('');
-    setUtilId(knownUtilities[0]?.id ?? null);
-    setSem(sections[sections.length - 1]?.title ?? '');
-    setModal(kind);
+    setModal('fee');
   };
 
-  const validPrice = () => {
-    if (!sem.trim()) {
-      Alert.alert('Required', 'Semester is required (e.g. 2026-T1)');
-      return false;
+  const closeModal = () => {
+    if (mustPrice && selected) {
+      Alert.alert(
+        `${selected.name} has no price`,
+        "A fee without a price won't show in the fee list once you leave. Set its price for a semester, or remove it.",
+        [
+          { text: 'Set price', style: 'cancel' },
+          { text: 'Remove fee', style: 'destructive', onPress: () => removeFee(selected) },
+        ]
+      );
+      return;
     }
-    const val = isValidCurrencyAmount(amount);
-    if (!val.valid) {
-      Alert.alert('Invalid Amount', val.error || 'Please check the amount');
-      return false;
-    }
-    return true;
-  };
-
-  const addPrice = async (id: number, name: string) => {
-    const price = await api.createUtilityPrice(id, sem.trim(), amount.trim());
     setModal(null);
-    Alert.alert('Bill created', `${name} for ${price.sem} is now ${formatGHS(price.amount)} per student.`);
-    fetchBills();
+    setSelectedId(null);
   };
 
-  const handleNewFee = async () => {
-    const name = utilName.trim();
+  const handleAddFee = async () => {
+    const name = newName.trim();
     if (!name) {
       Alert.alert('Required', 'Please enter the fee name');
       return;
     }
-    if (!validPrice()) return;
+    const existing = fees.find((f) => f.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      Alert.alert('Already added', `${existing.name} is already a fee. Tap it in the list to set a price.`);
+      return;
+    }
 
     try {
       setSaving(true);
-      let utility = created.find((u) => u.util_name.toLowerCase() === name.toLowerCase());
-      if (!utility) {
-        utility = await api.createUtility(name);
-        setCreated((prev) => [...prev, utility!]);
-      }
-      await addPrice(utility.id, utility.util_name);
+      const utility = await api.createUtility(name);
+      setCreated((prev) => [...prev, utility]);
+      // Go straight to pricing it: until it has a semester price nobody is billed for it
+      openFee({ id: utility.id, name: utility.util_name, prices: [] });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create the fee');
+      Alert.alert('Error', err.message || 'Failed to add the fee');
     } finally {
       setSaving(false);
     }
   };
 
   const handleAddPrice = async () => {
-    const id = knownUtilities.length > 0 ? utilId : parseInt(manualUtilId, 10);
-    if (!id || isNaN(id) || id <= 0) {
-      Alert.alert('Required', 'Choose the fee this price is for');
+    if (!selected) return;
+    const semester = sem.trim();
+    if (!semester) {
+      Alert.alert('Required', 'Semester is required (e.g. 2026-T1)');
       return;
     }
-    if (!validPrice()) return;
+    if (selected.prices.some((p) => p.sem.toLowerCase() === semester.toLowerCase())) {
+      Alert.alert('Already priced', `${selected.name} already has a price for ${semester}.`);
+      return;
+    }
+    const val = isValidCurrencyAmount(amount);
+    if (!val.valid) {
+      Alert.alert('Invalid Amount', val.error || 'Please check the amount');
+      return;
+    }
 
     try {
       setSaving(true);
-      await addPrice(id, knownUtilities.find((u) => u.id === id)?.name ?? 'The fee');
+      const price = await api.createUtilityPrice(selected.id, semester, amount.trim());
+      setAmount('');
+      setSem('');
+      await fetchBills();
+      Alert.alert('Price saved', `${selected.name} for ${price.sem} is now ${formatGHS(price.amount)} per student.`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to add the price');
+      Alert.alert('Error', err.message || 'Failed to save the price');
     } finally {
       setSaving(false);
     }
+  };
+
+  const removeFee = async (fee: Fee) => {
+    try {
+      setSaving(true);
+      await api.removeUtility(fee.id);
+      setCreated((prev) => prev.filter((u) => u.id !== fee.id));
+      setModal(null);
+      setSelectedId(null);
+      await fetchBills();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to remove the fee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = () => {
+    if (!selected) return;
+    const fee = selected;
+    Alert.alert(
+      `Remove ${fee.name}?`,
+      'It drops off the fee list and students are no longer billed for it. Payments already made on it stay on record.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => removeFee(fee) },
+      ]
+    );
   };
 
   if (loading) {
     return <LoadingSpinner message="Loading fees & utilities..." />;
   }
 
+  const renderFee = ({ item }: { item: Fee }) => {
+    const shown = item.prices.slice(0, PREVIEW_PRICES);
+    const more = item.prices.length - shown.length;
+    return (
+      <AppCard style={styles.feeCard} onPress={() => openFee(item)}>
+        <View style={styles.feeRow}>
+          <Text style={[styles.feeName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </View>
+        {shown.length === 0 ? (
+          <Text style={[styles.feeHint, { color: colors.warning }]}>No price yet · tap to set one</Text>
+        ) : (
+          <View style={styles.chips}>
+            {shown.map((p) => (
+              <View key={p.bill_id} style={[styles.priceChip, { backgroundColor: colors.surfaceVariant }]}>
+                <Text style={[styles.priceChipSem, { color: colors.textSecondary }]}>{p.sem}</Text>
+                <Text style={[styles.priceChipAmount, { color: colors.primary }]}>{formatGHS(p.amount)}</Text>
+              </View>
+            ))}
+            {more > 0 && (
+              <Text style={[styles.feeHint, { color: colors.textMuted, marginTop: 0, alignSelf: 'center' }]}>
+                +{more} more
+              </Text>
+            )}
+          </View>
+        )}
+      </AppCard>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => String(item.bill_id)}
-        stickySectionHeadersEnabled={false}
+      <FlatList
+        data={fees}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderFee}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -177,30 +262,14 @@ export const BillsScreen = () => {
         }
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View>
-            <View style={styles.header}>
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>Fees & Utilities</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Every active fee and what each student is billed for it per semester
+                Tap a fee to set its semester price or remove it
               </Text>
             </View>
-
-            <View style={styles.actionRow}>
-              <AppButton
-                title="+ New Fee"
-                variant="primary"
-                size="sm"
-                onPress={() => openModal('newFee')}
-                style={styles.actionBtn}
-              />
-              <AppButton
-                title="+ Semester Price"
-                variant="outline"
-                size="sm"
-                onPress={() => openModal('price')}
-                style={styles.actionBtn}
-              />
-            </View>
+            <AppButton title="+ Add Fee" variant="primary" size="sm" onPress={openAdd} />
           </View>
         }
         ListEmptyComponent={
@@ -208,105 +277,105 @@ export const BillsScreen = () => {
             <Text style={{ fontSize: 36, marginBottom: 8 }}>📋</Text>
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No fees yet</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Add a fee (e.g. Tuition) with its semester price to start billing students.
+              Add a fee (e.g. Tuition), then tap it to set what each student pays per semester.
             </Text>
           </View>
         }
-        renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{section.title}</Text>
-            <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>
-              {formatGHS(section.total)} per student
-            </Text>
-          </View>
-        )}
-        renderItem={({ item }) => (
-          <AppCard style={styles.billCard}>
-            <View style={styles.billRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.billName, { color: colors.textPrimary }]}>{item.util_name}</Text>
-                <Text style={[styles.billMeta, { color: colors.textMuted }]}>Bill #{item.bill_id}</Text>
-              </View>
-              <Text style={[styles.billAmount, { color: colors.primary }]}>{formatGHS(item.amount)}</Text>
-            </View>
-          </AppCard>
-        )}
       />
 
-      <Modal visible={modal !== null} transparent animationType="slide" onRequestClose={() => setModal(null)}>
+      <Modal visible={modal !== null} transparent animationType="slide" onRequestClose={closeModal}>
         <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {modal === 'newFee' ? 'New Fee' : 'Add Semester Price'}
-            </Text>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                {modal === 'add' ? 'Add Fee' : selected?.name}
+              </Text>
+              <TouchableOpacity onPress={closeModal} hitSlop={10} accessibilityLabel="Close">
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
             <KeyboardAwareScrollView bottomOffset={KEYBOARD_BOTTOM_OFFSET} keyboardShouldPersistTaps="handled">
-              {modal === 'newFee' ? (
-                <AppTextInput
-                  label="Fee Name"
-                  placeholder="e.g. Tuition, Bus Service, PTA Dues"
-                  value={utilName}
-                  onChangeText={setUtilName}
-                />
-              ) : knownUtilities.length > 0 ? (
-                <View style={styles.utilPicker}>
-                  <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>Fee</Text>
-                  <View style={styles.chips}>
-                    {knownUtilities.map((u) => (
-                      <TouchableOpacity
-                        key={u.id}
-                        onPress={() => setUtilId(u.id)}
-                        style={[
-                          styles.chip,
-                          { backgroundColor: utilId === u.id ? colors.primary : colors.surfaceVariant },
-                        ]}
-                      >
-                        <Text
-                          style={{
-                            color: utilId === u.id ? '#FFFFFF' : colors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: '600',
-                          }}
+              {modal === 'add' ? (
+                <>
+                  <AppTextInput
+                    label="Fee Name"
+                    placeholder="e.g. Tuition, Bus Service, PTA Dues"
+                    value={newName}
+                    onChangeText={setNewName}
+                    autoFocus
+                  />
+                  <AppButton title="Add Fee" variant="primary" loading={saving} onPress={handleAddFee} />
+                </>
+              ) : selected ? (
+                <>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Semester prices</Text>
+                  {selected.prices.length === 0 ? (
+                    <Text style={[styles.feeHint, { color: mustPrice ? colors.warning : colors.textMuted, marginBottom: 8 }]}>
+                      {mustPrice
+                        ? 'Set a price for a semester before leaving, or remove this fee.'
+                        : "No price yet. Students aren't billed for this fee until it has one."}
+                    </Text>
+                  ) : (
+                    selected.prices.map((p) => (
+                      <View key={p.bill_id} style={[styles.priceRow, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.priceSem, { color: colors.textPrimary }]}>{p.sem}</Text>
+                        <Text style={[styles.priceAmount, { color: colors.primary }]}>{formatGHS(p.amount)}</Text>
+                      </View>
+                    ))
+                  )}
+
+                  <Text style={[styles.label, { color: colors.textSecondary, marginTop: 16 }]}>
+                    Add a semester price
+                  </Text>
+                  {semesterChoices.length > 0 && (
+                    <View style={[styles.chips, { marginBottom: 10 }]}>
+                      {semesterChoices.slice(0, 4).map((s) => (
+                        <TouchableOpacity
+                          key={s}
+                          onPress={() => setSem(s)}
+                          style={[
+                            styles.semChip,
+                            { backgroundColor: sem === s ? colors.primary : colors.surfaceVariant },
+                          ]}
                         >
-                          {u.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={{ color: sem === s ? '#FFFFFF' : colors.textPrimary, fontSize: 13, fontWeight: '600' }}
+                          >
+                            {s}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <View style={styles.inputRow}>
+                    <View style={{ flex: 1 }}>
+                      <AppTextInput
+                        label="Semester"
+                        placeholder="e.g. 2026-T1"
+                        value={sem}
+                        onChangeText={setSem}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <AppTextInput
+                        label="Price (GH₵)"
+                        placeholder="e.g. 500.00"
+                        value={amount}
+                        onChangeText={setAmount}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
                   </View>
-                </View>
-              ) : (
-                <AppTextInput
-                  label="Utility ID"
-                  placeholder="e.g. 1"
-                  value={manualUtilId}
-                  onChangeText={setManualUtilId}
-                  keyboardType="number-pad"
-                  hint="The bills list doesn't include utility IDs yet, so enter it by hand"
-                />
-              )}
-              <AppTextInput
-                label="Semester"
-                placeholder="e.g. 2026-T1"
-                value={sem}
-                onChangeText={setSem}
-                autoCapitalize="characters"
-              />
-              <AppTextInput
-                label="Price per student (GH₵)"
-                placeholder="e.g. 500.00"
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-              />
-              <View style={styles.modalActions}>
-                <AppButton title="Cancel" variant="outline" onPress={() => setModal(null)} style={{ flex: 1 }} />
-                <AppButton
-                  title={modal === 'newFee' ? 'Create Fee' : 'Save Price'}
-                  variant="primary"
-                  loading={saving}
-                  onPress={modal === 'newFee' ? handleNewFee : handleAddPrice}
-                  style={{ flex: 1 }}
-                />
-              </View>
+                  <AppButton title="Save Price" variant="primary" loading={saving} onPress={handleAddPrice} />
+
+                  <TouchableOpacity onPress={handleRemove} disabled={saving} style={styles.removeBtn}>
+                    <Ionicons name="trash-outline" size={16} color={colors.error} />
+                    <Text style={[styles.removeText, { color: colors.error }]}>Remove fee</Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
             </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -323,7 +392,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
   },
   title: {
     fontSize: 22,
@@ -333,46 +405,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  actionBtn: {
-    flex: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  sectionMeta: {
-    fontSize: 12,
-  },
-  billCard: {
+  feeCard: {
     padding: 14,
-    marginVertical: 4,
+    marginVertical: 5,
   },
-  billRow: {
+  feeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  billName: {
+  feeName: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
   },
-  billMeta: {
+  feeHint: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 6,
   },
-  billAmount: {
-    fontSize: 16,
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  priceChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  priceChipSem: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  priceChipAmount: {
+    fontSize: 13,
     fontWeight: '800',
   },
   empty: {
@@ -399,32 +470,56 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     maxHeight: '85%',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 14,
   },
-  utilPicker: {
-    marginBottom: 12,
+  modalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
   },
-  pickerLabel: {
+  label: {
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  chips: {
+  priceRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
+    justifyContent: 'space-between',
     paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalActions: {
+  priceSem: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  priceAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  semChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  inputRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 14,
+  },
+  removeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  removeText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

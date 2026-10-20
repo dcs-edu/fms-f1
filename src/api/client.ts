@@ -22,12 +22,19 @@ import {
   Bill,
   StudentBills,
   StudentDebt,
-  PaymentQuery,
 } from './types';
 import { deriveStudentID } from '../utils/studentId';
+import { fullName } from '../utils/finance';
 
-/** Payments carry grad_year + seq_num instead of a student_id; build it once here for every screen. */
-const withStudentId = (p: Payment): Payment => ({ ...p, student_id: deriveStudentID(p) });
+/**
+ * Payments carry grad_year + seq_num instead of a student_id, and GET /payments sends the name in parts;
+ * build both once here for every screen.
+ */
+const withStudentId = (p: Payment): Payment => ({
+  ...p,
+  student_id: deriveStudentID(p),
+  student_name: p.fname ? fullName({ fname: p.fname, mname: p.mname, lname: p.lname ?? '' }) : undefined,
+});
 
 export class ApiError extends Error {
   status: number;
@@ -114,11 +121,11 @@ class ApiClient {
     }
 
     const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return (await response.json()) as T;
-    }
-
     const text = await response.text();
+    // Some replies (e.g. 202 from PATCH /utilities/remove/{id}) say JSON but carry no body
+    if (contentType.includes('application/json')) {
+      return (text ? JSON.parse(text) : {}) as T;
+    }
     return text as unknown as T;
   }
 
@@ -203,17 +210,9 @@ class ApiClient {
 
   // ==================== BURSAR & CASH ====================
 
+  /** Preset ranges only: the backend deliberately takes no arbitrary from/to dates. */
   async getAllPayments(range: DateRangeKey = 'this_month'): Promise<Payment[]> {
-    return this.getPayments({ range });
-  }
-
-  /** Preset ranges use ?range=; custom windows send ?from=&to= (needs backend support). */
-  async getPayments(query: PaymentQuery): Promise<Payment[]> {
-    const qs =
-      'range' in query
-        ? `range=${query.range}`
-        : `from=${encodeURIComponent(query.from)}&to=${encodeURIComponent(query.to)}`;
-    const data = await this.request<Payment[] | null>(`/payments?${qs}`, { method: 'GET' });
+    const data = await this.request<Payment[] | null>(`/payments?range=${range}`, { method: 'GET' });
     return (data || []).map(withStudentId);
   }
 
@@ -239,6 +238,11 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ sem, amount }),
     });
+  }
+
+  /** Switches a fee off (is_active = false): it drops out of GET /utilities/list, recorded payments stay. */
+  async removeUtility(utilId: number): Promise<void> {
+    await this.request<void>(`/utilities/remove/${utilId}`, { method: 'PATCH' });
   }
 
   /** Every active bill (utility + semester price). */

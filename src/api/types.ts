@@ -97,7 +97,10 @@ export interface Payment {
   grad_year?: number;
   seq_num?: number;
   student_id?: string; // not sent; the API client derives it from grad_year + seq_num
-  student_name?: string; // not sent yet; shown in reports when present
+  fname?: string; // GET /payments only; other payment replies send them empty
+  mname?: string | null;
+  lname?: string;
+  student_name?: string; // not sent; the API client builds it from fname/mname/lname
 }
 
 export interface StudentPayments {
@@ -160,7 +163,7 @@ export type DateRangeKey = 'today' | 'this_week' | 'this_month' | 'three_months_
 /** A utility price with its name joined in, as returned by GET /utilities/list. */
 export interface Bill {
   bill_id: number;
-  util_id?: number; // not sent yet; lets the utilities screen add a semester price to an existing fee
+  util_id: number;
   util_name: string;
   sem: string;
   amount: string;
@@ -198,7 +201,3 @@ export interface StudentDebt {
   owing: number | string;
 }
 
-/** A preset range key, or a custom inclusive day window (YYYY-MM-DD). */
-export type PaymentQuery =
-  | { range: DateRangeKey }
-  | { from: string; to: string };

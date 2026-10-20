@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { api } from '../../api/client';
-import { Payment, DateRangeKey } from '../../api/types';
+import { Payment, DateRangeKey, Bill } from '../../api/types';
 import { formatGHS } from '../../utils/currency';
+import { billLabel } from '../../utils/finance';
 import { AppCard } from '../../components/common/AppCard';
 import { StatusPill } from '../../components/payments/StatusPill';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
@@ -28,6 +29,7 @@ export const LedgerScreen = ({ navigation }: any) => {
 
   const [range, setRange] = useState<DateRangeKey>('this_month');
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [bills, setBills] = useState<Map<number, Bill>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +37,12 @@ export const LedgerScreen = ({ navigation }: any) => {
   const fetchLedger = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.getAllPayments(range);
+      const [data, b] = await Promise.all([
+        api.getAllPayments(range),
+        api.getBills().catch(() => [] as Bill[]),
+      ]);
       setPayments(data || []);
+      setBills(new Map(b.map((bill) => [bill.bill_id, bill])));
     } catch (err: any) {
       setError(err.message || 'Failed to fetch financial ledger');
     } finally {
@@ -180,7 +186,7 @@ export const LedgerScreen = ({ navigation }: any) => {
                   {formatGHS(item.amount)}
                 </Text>
                 <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  Bill #{item.bill_id} •{' '}
+                  {billLabel(bills, item.bill_id)} •{' '}
                   {new Date(item.created_at).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
