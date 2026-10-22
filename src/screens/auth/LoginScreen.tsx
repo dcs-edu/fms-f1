@@ -14,15 +14,13 @@ import { AppButton } from '../../components/common/AppButton';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 
 export const LoginScreen = ({ navigation }: any) => {
-  const { login, apiBaseUrl, setApiBaseUrl } = useAuth();
+  const { login } = useAuth();
   const { colors, typography, spacing, isDark, toggleTheme } = useAppTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
-  const [customUrl, setCustomUrl] = useState(apiBaseUrl);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -41,11 +39,6 @@ export const LoginScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleSaveUrl = () => {
-    setApiBaseUrl(customUrl);
-    setShowConfig(false);
-  };
-
   return (
     <KeyboardAwareScrollView
       bottomOffset={KEYBOARD_BOTTOM_OFFSET}
@@ -59,36 +52,14 @@ export const LoginScreen = ({ navigation }: any) => {
             {isDark ? '☀️ Light' : '🌙 Dark'}
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setShowConfig(!showConfig)}>
-          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
-            ⚙️ Server URL
-          </Text>
-        </TouchableOpacity>
       </View>
-
-      {showConfig && (
-        <View style={[styles.configCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.configTitle, { color: colors.textPrimary }]}>
-            Backend Server Connection
-          </Text>
-          <AppTextInput
-            label="API Base URL"
-            value={customUrl}
-            onChangeText={setCustomUrl}
-            autoCapitalize="none"
-            hint="e.g. http://localhost:8080 or http://10.0.2.2:8080 (Android)"
-          />
-          <AppButton title="Update URL" size="sm" onPress={handleSaveUrl} />
-        </View>
-      )}
 
       <View style={styles.header}>
         <View style={[styles.logoIcon, { backgroundColor: colors.primaryContainer }]}>
           <Text style={{ fontSize: 32 }}>🏫</Text>
         </View>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          School Fees & Portal
+          Divine Charisma School Portal
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Sign in with your registered account
@@ -166,17 +137,6 @@ const styles = StyleSheet.create({
   themeToggle: {
     paddingVertical: 4,
     paddingHorizontal: 8,
-  },
-  configCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  configTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
   },
   header: {
     alignItems: 'center',
