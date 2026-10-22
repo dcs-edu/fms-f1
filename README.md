@@ -1,4 +1,4 @@
-# School Fees & Management (FMS) — Mobile
+# School Payments & Finance Management Portal
 
 A cross-platform mobile app for managing school fees. Parents pay bills online, bursars collect and track payments, and administrators manage students, parents and staff roles — all from one Expo / React Native app that talks to the FMS backend API.
 
