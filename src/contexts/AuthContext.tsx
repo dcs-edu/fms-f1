@@ -12,7 +12,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   apiBaseUrl: string;
-  setApiBaseUrl: (url: string) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, phone: string, password: string) => Promise<void>;
   changePassword: (data: ChangePasswordRequest) => Promise<void>;
@@ -25,12 +24,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<JWTCustomClaims | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [apiBaseUrl, setApiBaseUrlState] = useState<string>(APP_CONFIG.apiBaseUrl);
-
-  const setApiBaseUrl = (url: string) => {
-    setApiBaseUrlState(url);
-    api.setBaseUrl(url);
-  };
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -103,8 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: user ? user.role : null,
         isAuthenticated: !!token && !!user && !isTokenExpired(user),
         isLoading,
-        apiBaseUrl,
-        setApiBaseUrl,
+        apiBaseUrl: APP_CONFIG.apiBaseUrl,
         login,
         register,
         changePassword,

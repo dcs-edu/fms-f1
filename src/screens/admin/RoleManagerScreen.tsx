@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { api } from '../../api/client';
@@ -16,8 +17,10 @@ import { User, UserRole } from '../../api/types';
 import { AppCard } from '../../components/common/AppCard';
 import { AppBadge } from '../../components/common/AppBadge';
 import { AppButton } from '../../components/common/AppButton';
+import { AppTextInput } from '../../components/common/AppTextInput';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { RangeSelector } from '../../components/finance/RangeSelector';
 
 const ROLES: UserRole[] = ['admin', 'principal', 'bursar', 'teacher', 'parent'];
 // Principals may promote/demote anyone up to principal, but never grant or revoke admin.
@@ -35,6 +38,8 @@ export const RoleManagerScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
 
   // Role Edit Modal
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -57,6 +62,26 @@ export const RoleManagerScreen = () => {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const roleOptions = useMemo(() => {
+    const present = ROLES.filter((r) => users.some((u) => u.role === r));
+    return [
+      { key: 'all' as const, label: 'All roles' },
+      ...present.map((r) => ({
+        key: r,
+        label: `${r[0].toUpperCase()}${r.slice(1)} (${users.filter((u) => u.role === r).length})`,
+      })),
+    ];
+  }, [users]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return users.filter(
+      (u) =>
+        (roleFilter === 'all' || u.role === roleFilter) &&
+        (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    );
+  }, [users, query, roleFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -105,8 +130,9 @@ export const RoleManagerScreen = () => {
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       <FlatList
-        data={users}
+        data={visible}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
         }
@@ -118,6 +144,28 @@ export const RoleManagerScreen = () => {
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Assign staff privileges, bursar permissions, or manage parent accounts
+            </Text>
+            <AppTextInput
+              placeholder="Search by name or email"
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              autoCapitalize="none"
+              leftIcon={<Ionicons name="search-outline" size={18} color={colors.textMuted} />}
+              containerStyle={styles.search}
+            />
+            <View style={styles.filters}>
+              <RangeSelector options={roleOptions} value={roleFilter} onChange={setRoleFilter} />
+            </View>
+            <Text style={[styles.count, { color: colors.textMuted }]}>
+              {visible.length} of {users.length} user{users.length === 1 ? '' : 's'}
+            </Text>
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              {users.length === 0 ? 'No user accounts yet.' : 'No users match your search.'}
             </Text>
           </View>
         }
@@ -232,6 +280,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  search: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  filters: {
+    marginBottom: 10,
+  },
+  count: {
+    fontSize: 12,
+  },
+  empty: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
   },
   userCard: {
     padding: 14,

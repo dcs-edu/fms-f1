@@ -45,12 +45,14 @@ export const ProfileScreen = ({ navigation }: any) => {
             {role}
           </Text>
         </View>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Server</Text>
-          <Text style={[styles.val, styles.mono, { color: colors.textMuted }]} numberOfLines={1}>
-            {apiBaseUrl}
-          </Text>
-        </View>
+        {role === 'admin' && (
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Server</Text>
+            <Text style={[styles.val, styles.mono, { color: colors.textMuted }]} numberOfLines={1}>
+              {apiBaseUrl}
+            </Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard style={styles.section}>
